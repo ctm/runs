@@ -1,0 +1,14 @@
+[package]
+name = "runs"
+version = "0.1.0"
+authors = ["Clifford T. Matthews <ctm@devctm.com>"]
+edition = "2018"
+
+[dependencies]
+nom = "4.2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+htmlescape = "0.3.1"
+sports-metrics = { version = "0.1.0", path = "../playpens/rust/sports-metrics" }
+phf = { version = "0.7.24", features = ["macros"] }
+reqwest = "0.9.10"
