@@ -12,3 +12,4 @@ htmlescape = "0.3.1"
 sports-metrics = { version = "0.1.0", path = "../playpens/rust/sports-metrics" }
 phf = { version = "0.7.24", features = ["macros"] }
 reqwest = "0.9.10"
+structopt = "0.2.14"

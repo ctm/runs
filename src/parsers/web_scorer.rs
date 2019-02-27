@@ -1,5 +1,6 @@
 use crate::parsers::NameAndTime;
 use nom::multispace;
+use nom::rest;
 use nom::types::CompleteStr;
 use sports_metrics::duration::Duration;
 use std::borrow::Cow;
@@ -11,6 +12,7 @@ pub struct Placement<'a> {
     pub place: u16,
     pub bib: Option<Cow<'a, str>>,
     pub name: Cow<'a, str>,
+    pub team: Option<Cow<'a, str>>,
     pub category: Option<Cow<'a, str>>,
     pub gender: Option<Cow<'a, str>>,
     pub finish_time: Duration,
@@ -23,6 +25,17 @@ impl<'a> Placement<'a> {
         } else {
             None
         }
+    }
+
+    pub fn results(contents: &'a str) -> Option<Vec<Self>> {
+        match results(CompleteStr(contents)) {
+            Ok((_, results)) => Some(results),
+            Err(_) => None,
+        }
+    }
+
+    pub fn names_and_times(results: &'a [Self]) -> Vec<&'a dyn NameAndTime> {
+        results.iter().map(|r| r as &dyn NameAndTime).collect()
     }
 }
 
@@ -51,7 +64,7 @@ impl<'a> fmt::Display for Placement<'a> {
     }
 }
 
-named!(pub results<CompleteStr, Vec<Placement>>,
+named!(results<CompleteStr, Vec<Placement>>,
        do_parse!(
            take_until_and_consume!("<tbody>") >>
            results: many0!(placement) >>
@@ -64,14 +77,15 @@ named!(placement<CompleteStr, Placement>,
            tr_line >>
                place: place >>
                bib: bib >>
-               name: name >>
+               name_and_team: name_and_team >>
                category: category >>
                gender: gender >>
                finish_time: finish_time >>
                take_until_and_consume!("</tr>") >>
                ({
                    let finish_time = Duration::from_str(finish_time).unwrap();
-                   Placement { place, bib, name, category, gender, finish_time }
+                   let (name, team) = name_and_team;
+                   Placement { place, bib, name, team, category, gender, finish_time }
                })
        )
 );
@@ -146,15 +160,41 @@ named_args!(optional_inside_td<'a>(class: &'a str)<CompleteStr<'a>, Option<Cow<'
             )
 );
 
-named!(name<CompleteStr, Cow<str>>,
+named!(name_and_team<CompleteStr, (Cow<str>, Option<Cow<str>>)>,
        do_parse!(
            name: call!(inside_td, "r-racername") >>
+               (inner_name_and_team(CompleteStr(name)).unwrap().1)
+       )
+);
+
+named!(inner_name_and_team<CompleteStr, (Cow<str>, Option<Cow<str>>)>,
+       do_parse!(
+           name: alt!( take_until!("<span class=\'team-name\'>") | call!(rest)) >>
+               team: opt!(team) >>
                ({
-                   let name = name.trim_end_matches("<span class=\'team-name\'></span>");
-                   html_decoded(name)
+                   if let Some(team) = team {
+                       if team.trim().is_empty() {
+                           (html_decoded(&name), None)
+                       } else {
+                           (html_decoded(&name), Some(team))
+                       }
+                   } else {
+                       (html_decoded(&name), team)
+                   }
                })
        )
 );
+
+named!(team<CompleteStr, Cow<str>>,
+       do_parse!(
+           tag!("<span class='team-name'>") >>
+               team: take_until_and_consume!("</span>") >>
+               ({
+                   html_decoded(&team)
+               })
+       )
+);
+       
 
 fn html_decoded(string: &str) -> Cow<str> {
     if let Ok(decoded_string) = htmlescape::decode_html(string) {

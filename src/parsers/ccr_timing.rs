@@ -80,8 +80,11 @@ pub struct Results<'a> {
 }
 
 impl<'a> Results<'a> {
-    pub fn results(contents: &'a str) -> Self {
-        results(CompleteStr(contents)).unwrap().1
+    pub fn results(contents: &'a str) -> Option<Self> {
+        match results(CompleteStr(contents)) {
+            Ok((_, results)) => Some(results),
+            Err(_) => None,
+        }
     }
 
     pub fn sort_by(mut self, key: Sort) -> Self {
@@ -326,7 +329,7 @@ named_args!(name<'a>(category: Option<&'a str>)<CompleteStr<'a>, &'a str>,
                    _ => 21,
                }
            }) >>
-               (letters.trim_end())
+               (letters.trim())
            )
 );
 
@@ -381,22 +384,6 @@ named!(optionally_left_padded_duration<CompleteStr, Duration>,
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_results() {
-        use std::{fs::File, io::Read};
-
-        let mut file = File::open("assets/2019.html").unwrap();
-        let mut contents = String::new();
-        file.read_to_string(&mut contents).unwrap();
-        let results = results(CompleteStr(&contents))
-            .unwrap()
-            .1
-            .sort_by(Sort::ShoeDown);
-
-        println!("results = {}", results);
-        // TODO
-    }
 
     #[test]
     fn test_junk_line() {

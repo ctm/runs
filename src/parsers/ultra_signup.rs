@@ -28,7 +28,7 @@ struct PlacementJson {
     race_count: u16,     // 0
     runner_rank: f64,    // 97.44
     state: String,       // "AZ"
-    status: u8,          // 1 ?
+    status: u8,          // 1 appears to be finished, 2 DNF, 3 DNS?
     time: String,        // "16405000" (that's the time in milliseconds as a string)
 }
 
@@ -58,9 +58,13 @@ impl Placement {
         }
     }
 
-    pub fn results(contents: &str) -> Vec<Self> {
-        let fiftyk_json: Vec<PlacementJson> = serde_json::from_str(&contents).unwrap();
-        fiftyk_json.into_iter().map(Self::from).collect()
+    pub fn results(contents: &str) -> Option<Vec<Self>> {
+        let fiftyk_json: Result<Vec<PlacementJson>, serde_json::error::Error> =
+            serde_json::from_str(&contents);
+        match fiftyk_json {
+            Ok(fiftyk_json) => Some(fiftyk_json.into_iter().map(Self::from).collect()),
+            Err(_) => None,
+        }
     }
 
     pub fn names_and_times<'a>(results: &'a [Self]) -> Vec<&'a dyn NameAndTime> {

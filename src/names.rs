@@ -9,6 +9,16 @@ static ALIASES: phf::Map<&'static str, &'static str> = phf_map! {
     "Megan Devan" => "Rae Devan",
     "Tim Shultz" => "Timothy Shultz",
     "deadhead" => "Clifford Matthews",
+    "Crystal Andersen" => "Crystal Anderson",
+    "Guil Marez" => "Guill Marez",
+    "Kim Brooks" => "Kimberly Brooks",
+    "Matt Hickey" => "Matthew Hickey",
+    "Ed Matteo" => "Edward Matteo",
+    "Greg Huey" => "Gregory Huey",
+    "Matthew Procter" => "Matt Procter",
+    "Kenneth Oconnor" => "Kenneth O'Connor",
+    "Michelle Bourret" => "Suzanne Bourret",
+    "Matthew Swanson" => "Matt Swanson",
 };
 
 pub fn canonical(name_or_alias: &str) -> &str {
