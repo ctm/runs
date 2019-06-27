@@ -1,8 +1,5 @@
 #![feature(proc_macro_hygiene)]
 
-#[macro_use]
-extern crate nom;
-
 mod error;
 mod names;
 mod parsers;
