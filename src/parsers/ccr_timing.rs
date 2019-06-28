@@ -60,6 +60,7 @@ pub struct Placement<'a> {
 }
 
 impl<'a> Placement<'a> {
+    #[allow(dead_code)]
     pub fn body_from(uri: &str) -> Option<String> {
         if uri.starts_with("http://ccrtiming.com/events-results/") {
             super::body_from(&uri)
@@ -124,11 +125,14 @@ impl<'a> Results<'a> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn sort_by(mut self, key: Sort) -> Self {
+        #[allow(dead_code)]
         fn total_cmp(p1: &Placement, p2: &Placement) -> Ordering {
             p1.total.cmp(&p2.total)
         }
 
+        #[allow(dead_code)]
         fn opt_cmp<V>(p1: &Placement, p2: &Placement, key: fn(&Placement) -> Option<V>) -> Ordering
         where
             V: std::cmp::Ord,
@@ -145,6 +149,7 @@ impl<'a> Results<'a> {
             }
         }
 
+        #[allow(dead_code)]
         fn shoe_down_cmp(p1: &Placement, p2: &Placement) -> Ordering {
             opt_cmp(p1, p2, |p| p.shoe_down)
         }
@@ -161,6 +166,7 @@ impl<'a> Results<'a> {
     }
 }
 
+#[allow(dead_code)]
 pub enum Sort {
     Total,
     ShoeDown,

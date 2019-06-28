@@ -54,6 +54,7 @@ pub struct Placement {
 }
 
 impl Placement {
+    #[allow(dead_code)]
     pub fn body_from(uri: &str) -> Option<String> {
         match jsonable_uri(uri) {
             Err(_) => None,
@@ -128,6 +129,7 @@ impl NameAndTime for Placement {
     }
 }
 
+#[allow(dead_code)]
 fn jsonable_uri(input: &str) -> IResult<&str, String> {
     let (input, _) = tag("https://ultrasignup.com/results_event.aspx?did=")(input)?;
     let (input, did) = digit1(input)?;

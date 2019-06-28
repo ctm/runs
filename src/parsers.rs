@@ -4,6 +4,7 @@ pub mod web_scorer;
 
 use sports_metrics::duration::Duration;
 
+#[allow(dead_code)]
 fn body_from(uri: &str) -> Option<String> {
     match reqwest::get(uri) {
         Err(_) => None,

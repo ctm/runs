@@ -36,6 +36,7 @@ pub struct Placement<'a> {
 }
 
 impl<'a> Placement<'a> {
+    #[allow(dead_code)]
     pub fn body_from(uri: &str) -> Option<String> {
         if uri.starts_with("https://www.webscorer.com/race?raceid=") {
             super::body_from(&uri)
