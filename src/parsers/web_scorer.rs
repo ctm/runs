@@ -1,13 +1,14 @@
 use crate::parsers::NameAndTime;
 
-use crate::ccr_timing::{parse_to, take_until_and_consume};
+use crate::ccr_timing::take_until_and_consume;
 
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_until},
     character::complete::multispace0,
-    combinator::{opt, rest},
+    combinator::{map, map_parser, map_res, opt, rest, value},
     multi::many0,
+    sequence::{preceded, terminated, tuple},
     IResult,
 };
 use sports_metrics::duration::Duration;
@@ -74,109 +75,110 @@ impl<'a> fmt::Display for Placement<'a> {
 }
 
 fn results(input: &str) -> IResult<&str, Vec<Placement>> {
-    let (input, _) = take_until_and_consume("<tbody>")(input)?;
-    let (input, results) = many0(placement)(input)?;
-    Ok((input, results))
+    preceded(take_until_and_consume("<tbody>"), many0(placement))(input)
 }
 
 fn placement(input: &str) -> IResult<&str, Placement> {
-    let (input, _) = tr_line(input)?;
-    let (input, place) = place(input)?;
-    let (input, bib) = bib(input)?;
-    let (input, name_and_team) = name_and_team(input)?;
-    let (input, category) = category(input)?;
-    let (input, gender) = gender(input)?;
-    let (input, finish_time) = finish_time(input)?;
-    let (input, _) = take_until_and_consume("</tr>")(input)?;
-    Ok((input, {
-        let finish_time = Duration::from_str(finish_time).unwrap();
-        let (name, team) = name_and_team;
-        Placement {
-            place,
+    map(
+        tuple((
+            preceded(tr_line, place),
             bib,
-            name,
-            team,
+            name_and_team,
             category,
             gender,
-            finish_time,
-        }
-    }))
+            terminated(finish_time, take_until_and_consume("</tr>")),
+        )),
+        |(place, bib, name_and_team, category, gender, finish_time)| {
+            let finish_time = Duration::from_str(finish_time).unwrap();
+            let (name, team) = name_and_team;
+            Placement {
+                place,
+                bib,
+                name,
+                team,
+                category,
+                gender,
+                finish_time,
+            }
+        },
+    )(input)
 }
 
 fn tr_line(input: &str) -> IResult<&str, ()> {
-    let (input, _) = multispace0(input)?;
-    let (input, _) = tag("<tr class=\"")(input)?;
-    let (input, _) = take_until_and_consume("\"")(input)?;
-    let (input, _) = tag(">\r\n")(input)?;
-    Ok((input, ()))
+    value(
+        (),
+        tuple((
+            multispace0,
+            tag("<tr class=\""),
+            take_until_and_consume("\""),
+            tag(">\r\n"),
+        )),
+    )(input)
 }
 
 fn place(input: &str) -> IResult<&str, u16> {
-    let (input, digits) = inside_td(input, "r-place")?;
-    let (_, number) = parse_to(digits)?;
-    Ok((input, number))
+    map_res(inside_td("r-place"), |digits: &str| digits.parse())(input)
 }
 
-fn inside_td<'a>(input: &'a str, class: &'a str) -> IResult<&'a str, &'a str> {
-    let (input, _) = multispace0(input)?;
-    let (input, _) = tag("<td class='")(input)?;
-    let (input, _) = tag(class)(input)?;
-    let (input, _) = tag("'>")(input)?;
-    let (input, value) = take_until_and_consume("</td>")(input)?;
-    Ok((input, &value))
+fn inside_td<'a>(class: &'a str) -> impl Fn(&'a str) -> IResult<&'a str, &'a str> {
+    preceded(
+        tuple((multispace0, tag("<td class='"), tag(class), tag("'>"))),
+        take_until_and_consume("</td>"),
+    )
 }
 
 fn bib(input: &str) -> IResult<&str, Option<Cow<str>>> {
-    let (input, bib) = optional_inside_td(input, "r-bibnumber")?;
-    Ok((
-        input,
-        match bib {
-            Some(ref string) if string == "<span class=\'no-diff-hyphen\'>-</span>" => None,
-            _ => bib,
-        },
-    ))
+    map(optional_inside_td("r-bibnumber"), |bib| match bib {
+        Some(ref string) if string == "<span class=\'no-diff-hyphen\'>-</span>" => None,
+        _ => bib,
+    })(input)
 }
 
 fn optional_inside_td<'a>(
-    input: &'a str,
     class: &'a str,
-) -> IResult<&'a str, Option<Cow<'a, str>>> {
-    let (input, value) = inside_td(input, class)?;
-    Ok((input, {
+) -> impl Fn(&'a str) -> IResult<&'a str, Option<Cow<'a, str>>> {
+    map(inside_td(class), |value: &str| {
         let value = value.trim();
 
         match value {
             "" => None,
             _ => Some(html_decoded(value)),
         }
-    }))
+    })
 }
 
 fn name_and_team(input: &str) -> IResult<&str, (Cow<str>, Option<Cow<str>>)> {
-    let (input, name) = inside_td(input, "r-racername")?;
-    Ok((input, inner_name_and_team(name).unwrap().1))
+    map_parser(inside_td("r-racername"), inner_name_and_team)(input)
 }
 
 fn inner_name_and_team(input: &str) -> IResult<&str, (Cow<str>, Option<Cow<str>>)> {
-    let (input, name) = alt((take_until("<span class=\'team-name\'>"), rest))(input)?;
-    let (input, team) = opt(team)(input)?;
-    Ok((input, {
-        if let Some(team) = team {
-            if team.trim().is_empty() {
-                (html_decoded(&name), None)
+    map(
+        tuple((
+            alt((take_until("<span class=\'team-name\'>"), rest)),
+            opt(team),
+        )),
+        |(name, team)| {
+            if let Some(team) = team {
+                if team.trim().is_empty() {
+                    (html_decoded(&name), None)
+                } else {
+                    (html_decoded(&name), Some(team))
+                }
             } else {
-                (html_decoded(&name), Some(team))
+                (html_decoded(&name), team)
             }
-        } else {
-            (html_decoded(&name), team)
-        }
-    }))
+        },
+    )(input)
 }
 
 fn team(input: &str) -> IResult<&str, Cow<str>> {
-    let (input, _) = tag("<span class='team-name'>")(input)?;
-    let (input, team) = take_until_and_consume("</span>")(input)?;
-    Ok((input, html_decoded(&team)))
+    map(
+        preceded(
+            tag("<span class='team-name'>"),
+            take_until_and_consume("</span>"),
+        ),
+        html_decoded,
+    )(input)
 }
 
 fn html_decoded(string: &str) -> Cow<str> {
@@ -189,15 +191,15 @@ fn html_decoded(string: &str) -> Cow<str> {
 }
 
 fn category(input: &str) -> IResult<&str, Option<Cow<str>>> {
-    optional_inside_td(input, "r-category")
+    optional_inside_td("r-category")(input)
 }
 
 fn gender(input: &str) -> IResult<&str, Option<Cow<str>>> {
-    optional_inside_td(input, "r-gender")
+    optional_inside_td("r-gender")(input)
 }
 
 fn finish_time(input: &str) -> IResult<&str, &str> {
-    inside_td(input, "r-finish-time")
+    inside_td("r-finish-time")(input)
 }
 
 #[cfg(test)]

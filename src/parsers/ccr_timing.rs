@@ -1,16 +1,14 @@
 use crate::parsers::NameAndTime;
 
-use std::ops::{Range, RangeFrom, RangeTo};
-
 use nom::{
     branch::alt,
     bytes::complete::{tag, take, take_until},
     character::complete::multispace0,
-    combinator::{cond, not, opt, rest},
-    error::{make_error, ErrorKind, ParseError},
-    multi::many0,
-    sequence::preceded,
-    Compare, Err, FindSubstring, IResult, InputLength, InputTake, ParseTo, Slice,
+    combinator::{cond, flat_map, map, map_parser, map_res, not, opt, value},
+    error::ParseError,
+    multi::{many0, many_m_n},
+    sequence::{preceded, terminated, tuple},
+    Compare, FindSubstring, IResult, InputLength, InputTake,
 };
 
 use sports_metrics::duration::Duration;
@@ -169,25 +167,28 @@ impl<'a> fmt::Display for Results<'a> {
 }
 
 pub fn results(input: &str) -> IResult<&str, Results> {
-    let (input, _) = discard_through(input, "solo age groups")?;
-    let (input, soloists) = all_category_blocks(input)?;
-    let (input, _) = discard_through(input, "pairs age groups")?;
-    let (input, pairs) = all_category_blocks(input)?;
-    let (input, _) = discard_through(input, "team age groups")?;
-    let (input, teams) = all_category_blocks(input)?;
-    Ok((
-        input,
-        Results {
+    map(
+        tuple((
+            discard_through("solo age groups"),
+            all_category_blocks,
+            discard_through("pairs age groups"),
+            all_category_blocks,
+            discard_through("team age groups"),
+            all_category_blocks,
+        )),
+        |(_, soloists, _, pairs, _, teams)| Results {
             soloists,
             pairs,
             teams,
         },
-    ))
+    )(input)
 }
 
 fn all_category_blocks(input: &str) -> IResult<&str, Vec<Placement>> {
-    let (input, blocks) = many0(preceded(many0(junk_line), category_block))(input)?;
-    Ok((input, blocks.into_iter().flatten().collect()))
+    map(
+        many0(preceded(many0(junk_line), category_block)),
+        |blocks| blocks.into_iter().flatten().collect(),
+    )(input)
 }
 
 // TODO: move this elsewhere
@@ -198,21 +199,16 @@ where
     Input: InputTake + FindSubstring<T> + Compare<T>,
     T: InputLength + Clone,
 {
-    move |input| {
-        let cloned_tag_to_match = tag_to_match.clone();
-        let (input, res) = take_until(cloned_tag_to_match)(input)?;
-        let cloned_tag_to_match = tag_to_match.clone();
-        let (input, _) = tag(cloned_tag_to_match)(input)?;
-        Ok((input, res))
-    }
+    let cloned_tag_to_match = tag_to_match.clone();
+
+    terminated(take_until(tag_to_match), tag(cloned_tag_to_match))
 }
 
 fn junk_line(input: &str) -> IResult<&str, &str> {
-    let (input, res) = preceded(
+    preceded(
         not(alt((category_or_division_line, arrow_line))),
         take_until_and_consume("\r\n"),
-    )(input)?;
-    Ok((input, res))
+    )(input)
 }
 
 //  To make arrow_line the same type as category_or_division_line, we
@@ -220,35 +216,39 @@ fn junk_line(input: &str) -> IResult<&str, &str> {
 //  fail or succeed we don't care about the successful return value,
 //  so we return None.
 fn arrow_line(input: &str) -> IResult<&str, Option<&str>> {
-    let (input, _) = tag("<h3><a name=\"")(input)?;
-    Ok((input, None))
+    map(tag("<h3><a name=\""), |_| None)(input)
 }
 
-fn discard_through<'a>(input: &'a str, name: &str) -> IResult<&'a str, ()> {
+fn discard_through(name: &str) -> impl Fn(&str) -> IResult<&str, ()> {
     let to_find = format!("<h3><a name=\"{}\"", name);
 
-    let (input, _) = take_until_and_consume(&to_find[..])(input)?;
-    let (input, _) = take_until_and_consume("\r\n")(input)?;
-    Ok((input, ()))
+    move |input| {
+        value(
+            (),
+            tuple((
+                take_until_and_consume(&to_find[..]),
+                take_until_and_consume("\r\n"),
+            )),
+        )(input)
+    }
 }
 
 fn category_block(input: &str) -> IResult<&str, Vec<Placement>> {
-    let (input, category) = category_or_division_line(input)?;
-    let (input, _) = junk_line(input)?;
-    let (input, _) = junk_line(input)?;
-    let (input, placements) = many0(move |i| placement(i, category))(input)?;
-    Ok((input, placements))
+    flat_map(
+        terminated(category_or_division_line, many_m_n(2, 2, junk_line)),
+        |category| many0(placement(category)),
+    )(input)
 }
 
 fn category_or_division_line(input: &str) -> IResult<&str, Option<&str>> {
-    let (input, res) = preceded(opt(tag("<pre>")), alt((category_line, division_line)))(input)?;
-    Ok((input, res))
+    preceded(opt(tag("<pre>")), alt((category_line, division_line)))(input)
 }
 
 fn category_line(input: &str) -> IResult<&str, Option<&str>> {
-    let (input, _) = tag("CATEGORY: ")(input)?;
-    let (input, category) = take_until_and_consume("\r\n")(input)?;
-    Ok((input, Some(&category)))
+    map(
+        preceded(tag("CATEGORY: "), take_until_and_consume("\r\n")),
+        Some,
+    )(input)
 }
 
 // If we have a division line, then the category will actually
@@ -256,57 +256,37 @@ fn category_line(input: &str) -> IResult<&str, Option<&str>> {
 // format.  So, we return None to show that no *category* was
 // found.  We throw away the division, because it's not useful.
 fn division_line(input: &str) -> IResult<&str, Option<&str>> {
-    let (input, _) = tag("DIVISION: ")(input)?;
-    let (input, _) = take_until_and_consume("\r\n")(input)?;
-    Ok((input, None))
+    value(
+        None,
+        tuple((tag("DIVISION: "), take_until_and_consume("\r\n"))),
+    )(input)
 }
 
 fn placement<'a>(
-    input: &'a str,
     header_category: Option<&'a str>,
-) -> IResult<&'a str, Placement<'a>> {
-    let (input, category_place) = right_justified_five_digit_number(input)?;
-    let (input, _) = tag(" ")(input)?;
-    let (input, name) = name(input, header_category)?;
-    let (input, _) = tag(" ")(input)?;
-    let (input, bike_up) = optional_duration(input)?;
-    let (input, _) = tag(" ")(input)?;
-    let (input, run_up) = optional_duration(input)?;
-    let (input, _) = tag(" ")(input)?;
-    let (input, ski_up) = optional_duration(input)?;
-    let (input, _) = tag(" ")(input)?;
-    let (input, shoe_up) = optional_duration(input)?;
-    let (input, _) = tag("  ")(input)?;
-    let (input, total_up) = optional_duration(input)?;
-    let (input, _) = tag(" ")(input)?;
-    let (input, shoe_down) = optional_duration(input)?;
-    let (input, _) = tag(" ")(input)?;
-    let (input, ski_down) = optional_duration(input)?;
-    let (input, _) = tag(" ")(input)?;
-    let (input, run_down) = optional_duration(input)?;
-    let (input, _) = tag(" ")(input)?;
-    let (input, bike_down) = optional_duration(input)?;
-    let (input, _) = tag("  ")(input)?;
-    let (input, total_down) = optional_duration(input)?;
-    let (input, _) = tag(" ")(input)?;
-    let (input, total) = non_blank_duration(input)?;
-    let (input, _) = tag(" ")(input)?;
-    let (input, bib) = right_justified_five_digit_number(input)?;
-    let (input, _) = tag(" ")(input)?;
-    let (input, category_column) =
-        cond(header_category.is_none(), upto_fourteen_characters)(input)?;
-    let (input, _) = opt(tag("</pre>"))(input)?;
-    let (input, _) = crlf(input)?;
-    Ok((input, {
-        let total = total.unwrap();
-        let category;
-        match header_category {
-            Some(value) => category = value,
-            _ => category = &category_column.expect("no category anywhere"),
-        }
-
-        Placement {
-            category,
+) -> impl Fn(&'a str) -> IResult<&'a str, Placement<'a>> + 'a {
+    map(
+        tuple((
+            terminated(right_justified_five_digit_number, tag(" ")),
+            terminated(name(header_category), tag(" ")),
+            terminated(optional_duration, tag(" ")),
+            terminated(optional_duration, tag(" ")),
+            terminated(optional_duration, tag(" ")),
+            terminated(optional_duration, tag("  ")),
+            terminated(optional_duration, tag(" ")),
+            terminated(optional_duration, tag(" ")),
+            terminated(optional_duration, tag(" ")),
+            terminated(optional_duration, tag(" ")),
+            terminated(optional_duration, tag("  ")),
+            terminated(optional_duration, tag(" ")),
+            terminated(non_blank_duration, tag(" ")),
+            terminated(right_justified_five_digit_number, tag(" ")),
+            terminated(
+                cond(header_category.is_none(), upto_fourteen_characters),
+                tuple((opt(tag("</pre>")), crlf)),
+            ),
+        )),
+        move |(
             category_place,
             name,
             bike_up,
@@ -321,75 +301,71 @@ fn placement<'a>(
             total_down,
             total,
             bib,
-        }
-    }))
+            category_column,
+        )| {
+            let total = total.unwrap();
+            let category;
+            match header_category {
+                Some(value) => category = value,
+                _ => category = &category_column.expect("no category anywhere"),
+            }
+            Placement {
+                category,
+                category_place,
+                name,
+                bike_up,
+                run_up,
+                ski_up,
+                shoe_up,
+                total_up,
+                shoe_down,
+                ski_down,
+                run_down,
+                bike_down,
+                total_down,
+                total,
+                bib,
+            }
+        },
+    )
 }
 
 fn crlf(input: &str) -> IResult<&str, &str> {
-    let (input, res) = tag("\r\n")(input)?;
-    Ok((input, res))
-}
-
-// TODO: move this elsewhere
-pub fn parse_to<T, R>(input: T) -> IResult<T, R>
-where
-    T: ParseTo<R>
-        + InputLength
-        + Slice<Range<usize>>
-        + Slice<RangeFrom<usize>>
-        + Slice<RangeTo<usize>>,
-{
-    let (input, source) = rest(input)?;
-    match source.parse_to() {
-        Some(number) => Ok((input, number)),
-        None => Err(Err::Error(make_error(input, ErrorKind::ParseTo))), // TODO: a better error
-    }
+    tag("\r\n")(input)
 }
 
 fn right_justified_five_digit_number(input: &str) -> IResult<&str, u16> {
-    let (input, digits) = take(5usize)(input)?;
-    let (_, number) = parse_to(digits.trim_start())?;
-    Ok((input, number))
+    map_res(take(5usize), |digits: &str| digits.trim_start().parse())(input)
 }
 
 fn upto_fourteen_characters(input: &str) -> IResult<&str, &str> {
-    let (input, letters) = take(14usize)(input)?;
-    Ok((input, letters.trim_end()))
+    map(take(14usize), |letters: &str| letters.trim_end())(input)
 }
 
-fn name<'a>(input: &'a str, category: Option<&'a str>) -> IResult<&'a str, &'a str> {
-    let (input, letters) = take({
-        match category {
-            None => 25usize,
-            _ => 21usize,
-        }
-    })(input)?;
-    Ok((input, letters.trim()))
+fn name(category: Option<&str>) -> impl Fn(&str) -> IResult<&str, &str> + '_ {
+    move |input| {
+        let n: usize = match category {
+            None => 25,
+            _ => 21,
+        };
+        map(take(n), |letters: &str| letters.trim())(input)
+    }
 }
 
 fn optional_duration(input: &str) -> IResult<&str, Option<Duration>> {
-    let (input, res) = alt((blank_duration, non_blank_duration))(input)?;
-    Ok((input, res))
+    alt((blank_duration, non_blank_duration))(input)
 }
 
 fn blank_duration(input: &str) -> IResult<&str, Option<Duration>> {
-    let (input, _) = tag("       ")(input)?;
-    Ok((input, None))
+    value(None, tag("       "))(input)
 }
 
-// NOTE: if this parser errors out, the error in the input that will be
-//       listed will be the seven characters.  That's OK for the way we
-//       use this parser, but it is probably not a good practice.
 fn non_blank_duration(input: &str) -> IResult<&str, Option<Duration>> {
-    let (input, exactly_seven_chars) = take(7usize)(input)?;
-    let (_, duration) = optionally_left_padded_duration(exactly_seven_chars)?;
-    Ok((input, Some(duration)))
+    map_parser(take(7usize), map(optionally_left_padded_duration, Some))(input)
 }
 
 fn optionally_left_padded_duration(input: &str) -> IResult<&str, Duration> {
-    let (input, _) = multispace0(input)?;
-    let (input, duration) = sports_metrics::duration::duration_parser(input)?;
-    Ok((input, duration))
+    preceded(multispace0, sports_metrics::duration::duration_parser)(input)
 }
 
 #[cfg(test)]
@@ -423,7 +399,7 @@ mod tests {
     #[test]
     fn test_placement() {
         let line = "    6 Clifford Matthews     5:05:05           47:35   31:21  3:30:01   10:33   30:42   53:50   50:18  2:25:22 5:55:22    99 \r\n";
-        let placement = placement(line, Some("MALE 50-59")).unwrap().1;
+        let placement = placement(Some("MALE 50-59"))(line).unwrap().1;
         // TODO: compare to known good parse
         println!("placement = {:?}", placement);
     }

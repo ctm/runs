@@ -1,5 +1,7 @@
 use crate::parsers::NameAndTime;
-use nom::{bytes::complete::tag, character::complete::digit1, IResult};
+use nom::{
+    bytes::complete::tag, character::complete::digit1, combinator::map, sequence::preceded, IResult,
+};
 use serde::Deserialize;
 use sports_metrics::duration::Duration;
 use std::str::FromStr;
@@ -127,7 +129,13 @@ impl NameAndTime for Placement {
 
 #[allow(dead_code)]
 fn jsonable_uri(input: &str) -> IResult<&str, String> {
-    let (input, _) = tag("https://ultrasignup.com/results_event.aspx?did=")(input)?;
-    let (input, did) = digit1(input)?;
-    Ok((input, format!("https://ultrasignup.com/service/events.svc/results/{}/json?_search=false&rows=1500&page=1&sidx=status+asc%2C+&sord=asc", did)))
+    map(
+        preceded(
+            tag("https://ultrasignup.com/results_event.aspx?did="),
+            digit1,
+        ),
+        |did| {
+            format!("https://ultrasignup.com/service/events.svc/results/{}/json?_search=false&rows=1500&page=1&sidx=status+asc%2C+&sord=asc", did)
+        },
+    )(input)
 }
