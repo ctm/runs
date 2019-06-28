@@ -1,9 +1,5 @@
 use crate::parsers::NameAndTime;
-use nom::{
-    IResult,
-    bytes::complete::tag,
-    character::complete::digit1,
-};
+use nom::{bytes::complete::tag, character::complete::digit1, IResult};
 use serde::Deserialize;
 use sports_metrics::duration::Duration;
 use std::str::FromStr;

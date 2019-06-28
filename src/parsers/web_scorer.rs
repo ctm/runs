@@ -1,23 +1,14 @@
 use crate::parsers::NameAndTime;
 
-use crate::ccr_timing::{
-    take_until_and_consume,
-    parse_to,
-};
-    
+use crate::ccr_timing::{parse_to, take_until_and_consume};
+
 use nom::{
-    IResult,
     branch::alt,
-    bytes::complete::{
-        tag,
-        take_until,
-    },
+    bytes::complete::{tag, take_until},
     character::complete::multispace0,
-    combinator::{
-        opt,
-        rest,
-    },
+    combinator::{opt, rest},
     multi::many0,
+    IResult,
 };
 use sports_metrics::duration::Duration;
 use std::borrow::Cow;
@@ -100,7 +91,15 @@ fn placement(input: &str) -> IResult<&str, Placement> {
     Ok((input, {
         let finish_time = Duration::from_str(finish_time).unwrap();
         let (name, team) = name_and_team;
-        Placement { place, bib, name, team, category, gender, finish_time }
+        Placement {
+            place,
+            bib,
+            name,
+            team,
+            category,
+            gender,
+            finish_time,
+        }
     }))
 }
 
@@ -129,13 +128,19 @@ fn inside_td<'a>(input: &'a str, class: &'a str) -> IResult<&'a str, &'a str> {
 
 fn bib(input: &str) -> IResult<&str, Option<Cow<str>>> {
     let (input, bib) = optional_inside_td(input, "r-bibnumber")?;
-    Ok((input, match bib {
-        Some(ref string) if string == "<span class=\'no-diff-hyphen\'>-</span>" => None,
-        _ => bib
-    }))
+    Ok((
+        input,
+        match bib {
+            Some(ref string) if string == "<span class=\'no-diff-hyphen\'>-</span>" => None,
+            _ => bib,
+        },
+    ))
 }
 
-fn optional_inside_td<'a>(input: &'a str, class: &'a str) -> IResult<& 'a str, Option<Cow<'a, str>>> {
+fn optional_inside_td<'a>(
+    input: &'a str,
+    class: &'a str,
+) -> IResult<&'a str, Option<Cow<'a, str>>> {
     let (input, value) = inside_td(input, class)?;
     Ok((input, {
         let value = value.trim();
@@ -171,9 +176,8 @@ fn inner_name_and_team(input: &str) -> IResult<&str, (Cow<str>, Option<Cow<str>>
 fn team(input: &str) -> IResult<&str, Cow<str>> {
     let (input, _) = tag("<span class='team-name'>")(input)?;
     let (input, team) = take_until_and_consume("</span>")(input)?;
-    Ok((input,  html_decoded(&team)))
+    Ok((input, html_decoded(&team)))
 }
-       
 
 fn html_decoded(string: &str) -> Cow<str> {
     if let Ok(decoded_string) = htmlescape::decode_html(string) {

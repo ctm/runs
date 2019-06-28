@@ -1,40 +1,16 @@
 use crate::parsers::NameAndTime;
 
-use std::ops::{
-    Range,
-    RangeFrom,
-    RangeTo,
-};
+use std::ops::{Range, RangeFrom, RangeTo};
 
 use nom::{
-    Compare,
-    Err,
-    FindSubstring,
-    InputLength,
-    InputTake,
-    IResult,
-    ParseTo,
-    Slice,
     branch::alt,
-    bytes::complete::{
-        tag,
-        take,
-        take_until,
-    },
+    bytes::complete::{tag, take, take_until},
     character::complete::multispace0,
-    combinator::{
-        cond,
-        not,
-        opt,
-        rest,
-    },
-    error::{
-        ErrorKind,
-        make_error,
-        ParseError,
-    },
+    combinator::{cond, not, opt, rest},
+    error::{make_error, ErrorKind, ParseError},
     multi::many0,
     sequence::preceded,
+    Compare, Err, FindSubstring, IResult, InputLength, InputTake, ParseTo, Slice,
 };
 
 use sports_metrics::duration::Duration;
@@ -199,7 +175,14 @@ pub fn results(input: &str) -> IResult<&str, Results> {
     let (input, pairs) = all_category_blocks(input)?;
     let (input, _) = discard_through(input, "team age groups")?;
     let (input, teams) = all_category_blocks(input)?;
-    Ok((input, Results { soloists, pairs, teams }))
+    Ok((
+        input,
+        Results {
+            soloists,
+            pairs,
+            teams,
+        },
+    ))
 }
 
 fn all_category_blocks(input: &str) -> IResult<&str, Vec<Placement>> {
@@ -209,11 +192,11 @@ fn all_category_blocks(input: &str) -> IResult<&str, Vec<Placement>> {
 
 // TODO: move this elsewhere
 pub fn take_until_and_consume<T, Input, Error: ParseError<Input>>(
-    tag_to_match: T
+    tag_to_match: T,
 ) -> impl Fn(Input) -> IResult<Input, Input, Error>
-    where
+where
     Input: InputTake + FindSubstring<T> + Compare<T>,
-    T: InputLength + Clone, 
+    T: InputLength + Clone,
 {
     move |input| {
         let cloned_tag_to_match = tag_to_match.clone();
@@ -225,8 +208,10 @@ pub fn take_until_and_consume<T, Input, Error: ParseError<Input>>(
 }
 
 fn junk_line(input: &str) -> IResult<&str, &str> {
-    let (input, res) = preceded(not(alt((category_or_division_line, arrow_line))),
-                                take_until_and_consume("\r\n"))(input)?;
+    let (input, res) = preceded(
+        not(alt((category_or_division_line, arrow_line))),
+        take_until_and_consume("\r\n"),
+    )(input)?;
     Ok((input, res))
 }
 
@@ -276,10 +261,13 @@ fn division_line(input: &str) -> IResult<&str, Option<&str>> {
     Ok((input, None))
 }
 
-fn placement<'a>(input: &'a str, header_category: Option<&'a str>) -> IResult<&'a str, Placement<'a>> {
+fn placement<'a>(
+    input: &'a str,
+    header_category: Option<&'a str>,
+) -> IResult<&'a str, Placement<'a>> {
     let (input, category_place) = right_justified_five_digit_number(input)?;
     let (input, _) = tag(" ")(input)?;
-    let (input, name) =name(input, header_category)?;
+    let (input, name) = name(input, header_category)?;
     let (input, _) = tag(" ")(input)?;
     let (input, bike_up) = optional_duration(input)?;
     let (input, _) = tag(" ")(input)?;
@@ -305,37 +293,36 @@ fn placement<'a>(input: &'a str, header_category: Option<&'a str>) -> IResult<&'
     let (input, _) = tag(" ")(input)?;
     let (input, bib) = right_justified_five_digit_number(input)?;
     let (input, _) = tag(" ")(input)?;
-    let (input, category_column) = cond(header_category.is_none(), upto_fourteen_characters)(input)?;
+    let (input, category_column) =
+        cond(header_category.is_none(), upto_fourteen_characters)(input)?;
     let (input, _) = opt(tag("</pre>"))(input)?;
     let (input, _) = crlf(input)?;
-    Ok((input,
-        {
-            let total = total.unwrap();
-            let category;
-            match header_category {
-                Some(value) => category = value,
-                _ => category = &category_column.expect("no category anywhere"),
-            }
-
-            Placement {
-                category,
-                category_place,
-                name,
-                bike_up,
-                run_up,
-                ski_up,
-                shoe_up,
-                total_up,
-                shoe_down,
-                ski_down,
-                run_down,
-                bike_down,
-                total_down,
-                total,
-                bib,
-            }
+    Ok((input, {
+        let total = total.unwrap();
+        let category;
+        match header_category {
+            Some(value) => category = value,
+            _ => category = &category_column.expect("no category anywhere"),
         }
-    ))
+
+        Placement {
+            category,
+            category_place,
+            name,
+            bike_up,
+            run_up,
+            ski_up,
+            shoe_up,
+            total_up,
+            shoe_down,
+            ski_down,
+            run_down,
+            bike_down,
+            total_down,
+            total,
+            bib,
+        }
+    }))
 }
 
 fn crlf(input: &str) -> IResult<&str, &str> {
@@ -345,13 +332,17 @@ fn crlf(input: &str) -> IResult<&str, &str> {
 
 // TODO: move this elsewhere
 pub fn parse_to<T, R>(input: T) -> IResult<T, R>
-    where
-    T: ParseTo<R> + InputLength + Slice<Range<usize>> + Slice<RangeFrom<usize>> + Slice<RangeTo<usize>>
+where
+    T: ParseTo<R>
+        + InputLength
+        + Slice<Range<usize>>
+        + Slice<RangeFrom<usize>>
+        + Slice<RangeTo<usize>>,
 {
     let (input, source) = rest(input)?;
     match source.parse_to() {
         Some(number) => Ok((input, number)),
-        None => Err(Err::Error(make_error(input, ErrorKind::ParseTo))) // TODO: a better error
+        None => Err(Err::Error(make_error(input, ErrorKind::ParseTo))), // TODO: a better error
     }
 }
 
