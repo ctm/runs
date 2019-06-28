@@ -182,7 +182,7 @@ impl<'a> fmt::Display for Results<'a> {
         for team in &self.teams {
             writeln!(f, "{}", team)?;
         }
-        write!(f, "") // TODO: better way to return success?
+        Ok(())
     }
 }
 
@@ -224,26 +224,17 @@ fn junk_line(input: &str) -> IResult<&str, &str> {
     Ok((input, res))
 }
 
-// TODO: either refactor or better document.  To make arrow_line the
-//       same tuype as category_or_division_line, we make it an Option<&str>
-//       but in reality we really only want it to fail or succeed we don't
-//       care about the successful return value, so we return None.
+//  To make arrow_line the same type as category_or_division_line, we
+//  make it an Option<&str> but in reality we really only want it to
+//  fail or succeed we don't care about the successful return value,
+//  so we return None.
 fn arrow_line(input: &str) -> IResult<&str, Option<&str>> {
     let (input, _) = tag("<h3><a name=\"")(input)?;
     Ok((input, None))
 }
 
-// TODO: although the code for discard_through is tiny, I don't think
-//       this is the best way to do it.  Most likely, there's already
-//       a cleaner way to do this just using pre-existing macros.
-//       However, if there's not, then writing my own macro would be
-//       worthwhile.  That macro would support the generalization of
-//       code that sets up a variable that's used in further macros.
-//       There's a chance I could write such a thing right now, but
-//       most likely I'd hit some stumbling blocks, first, so I'll
-//       put it off until after I've done a bunch of other things.
 fn discard_through<'a>(input: &'a str, name: &str) -> IResult<&'a str, ()> {
-    let to_find = format!("<h3><a name=\"{}", name);
+    let to_find = format!("<h3><a name=\"{}\"", name);
 
     let (input, _) = take_until_and_consume(&to_find[..])(input)?;
     let (input, _) = take_until_and_consume("\r\n")(input)?;
@@ -389,31 +380,13 @@ fn blank_duration(input: &str) -> IResult<&str, Option<Duration>> {
     Ok((input, None))
 }
 
-// In this particular case, we want exactly seven characters to
-// represent a duration that may be left padded with spaces.  It's
-// trivial to grab exactly seven characters, but I don't know of a way
-// completely within Nom's macro system to then apply parsers to those
-// seven characters.  However, I do know how the plumbing works, so I
-// have created a helper that gets me where I want to be.
-//
-// TODO: There is probably a better way to do this and at some point I
-// should ask for help.
+// NOTE: if this parser errors out, the error in the input that will be
+//       listed will be the seven characters.  That's OK for the way we
+//       use this parser, but it is probably not a good practice.
 fn non_blank_duration(input: &str) -> IResult<&str, Option<Duration>> {
     let (input, exactly_seven_chars) = take(7usize)(input)?;
-    let (input, duration) =lpd_helper(input, exactly_seven_chars)?;
+    let (_, duration) = optionally_left_padded_duration(exactly_seven_chars)?;
     Ok((input, Some(duration)))
-}
-
-// Ignore the "official" input and use the input that is passed as a separate
-// parameter.  Ugh!
-fn lpd_helper<'a>(
-    remaining: &'a str,
-    i: &'a str,
-) -> IResult<&'a str, Duration> {
-    match optionally_left_padded_duration(i) {
-        Ok((_remaining, duration)) => Ok((remaining, duration)),
-        Err(e) => Err(e),
-    }
 }
 
 fn optionally_left_padded_duration(input: &str) -> IResult<&str, Duration> {

@@ -128,28 +128,9 @@ fn inside_td<'a>(input: &'a str, class: &'a str) -> IResult<&'a str, &'a str> {
 
 fn bib(input: &str) -> IResult<&str, Option<Cow<str>>> {
     let (input, bib) = optional_inside_td(input, "r-bibnumber")?;
-    Ok((input, {
-                   // TODO: Although it doesn't matter here, I'm not happy
-                   // tearing apart and reconstructing bib below.  Logically,
-                   // I want to special-case the return value for bib when
-                   // it's that ugly span and otherwise, return bib (which
-                   // has already been created as an Option<Cow<str>>).
-                   //
-                   // Before I added the html decoding, I simply did the match
-                   // against Some("<span ...").  I don't know how to do that
-                   // when "<span ..." is wrapped in a Cow.  I don't want to
-                   // stop development now to find out, but it does seem worth
-                   // learning eventually.
-                   match bib {
-                       Some(string) => {
-                           if string == "<span class=\'no-diff-hyphen\'>-</span>" {
-                               None
-                           } else {
-                               Some(string)
-                           }
-                       },
-                       _ => bib
-                   }
+    Ok((input, match bib {
+        Some(ref string) if string == "<span class=\'no-diff-hyphen\'>-</span>" => None,
+        _ => bib
     }))
 }
 
