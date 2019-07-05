@@ -1,10 +1,12 @@
-use crate::parsers::NameAndTime;
-use nom::{
-    bytes::complete::tag, character::complete::digit1, combinator::map, sequence::preceded, IResult,
+use {
+    nom::{
+        bytes::complete::tag, character::complete::digit1, combinator::map, sequence::preceded,
+        IResult,
+    },
+    serde::Deserialize,
+    sports_metrics::duration::Duration,
+    std::{borrow::Cow, str::FromStr},
 };
-use serde::Deserialize;
-use sports_metrics::duration::Duration;
-use std::str::FromStr;
 
 // This is what we're given.  It's close to what we want, but it has some
 // fields we don't understand and also has inconsistent use of snake-case
@@ -69,8 +71,13 @@ impl Placement {
         }
     }
 
-    pub fn names_and_times<'a>(results: &'a [Self]) -> Vec<&'a dyn NameAndTime> {
-        results.iter().map(|r| r as &dyn NameAndTime).collect()
+    pub fn names_and_times(input: &str) -> Option<Vec<(Cow<str>, Duration)>> {
+        Self::results(input).map(|results| {
+            results
+                .into_iter()
+                .map(|placement| (Cow::from(placement.name), placement.time.clone()))
+                .collect()
+        })
     }
 }
 
@@ -114,16 +121,6 @@ impl From<PlacementJson> for Placement {
             time,
             name,
         }
-    }
-}
-
-impl NameAndTime for Placement {
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn time(&self) -> Duration {
-        self.time
     }
 }
 

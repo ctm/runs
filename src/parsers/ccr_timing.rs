@@ -1,18 +1,17 @@
-use crate::parsers::NameAndTime;
-
-use nom::{
-    branch::alt,
-    bytes::complete::{tag, take, take_until},
-    character::complete::multispace0,
-    combinator::{cond, flat_map, map, map_parser, map_res, not, opt, value},
-    error::ParseError,
-    multi::{many0, many_m_n},
-    sequence::{preceded, terminated, tuple},
-    Compare, FindSubstring, IResult, InputLength, InputTake,
+use {
+    nom::{
+        branch::alt,
+        bytes::complete::{tag, take, take_until},
+        character::complete::multispace0,
+        combinator::{cond, flat_map, map, map_parser, map_res, not, opt, value},
+        error::ParseError,
+        multi::{many0, many_m_n},
+        sequence::{preceded, terminated, tuple},
+        Compare, FindSubstring, IResult, InputLength, InputTake,
+    },
+    sports_metrics::duration::Duration,
+    std::{borrow::Cow, cmp::Ordering, fmt},
 };
-
-use sports_metrics::duration::Duration;
-use std::{cmp::Ordering, fmt};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Placement<'a> {
@@ -43,25 +42,20 @@ impl<'a> Placement<'a> {
         }
     }
 
-    // TODO: I believe we can do this generically
-    pub fn names_and_times(results: &'a [Self]) -> Vec<&'a dyn NameAndTime> {
-        results.iter().map(|r| r as &dyn NameAndTime).collect()
-    }
-}
-
-impl<'a> NameAndTime for Placement<'a> {
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn time(&self) -> Duration {
-        self.total
+    pub fn soloist_names_and_times(input: &str) -> Option<Vec<(Cow<str>, Duration)>> {
+        Results::results(input).map(|results| {
+            results
+                .soloists
+                .iter()
+                .map(|soloist| (Cow::from(soloist.name), soloist.total.clone()))
+                .collect()
+        })
     }
 }
 
 impl<'a> fmt::Display for Placement<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        type Printable<'a> = &'a dyn sports_metrics::duration::Printable<Duration>;
+        type Printable<'a> = &'a dyn sports_metrics::option_display::OptionDisplay<Duration>;
 
         write!(
             f,
@@ -191,7 +185,7 @@ fn all_category_blocks(input: &str) -> IResult<&str, Vec<Placement>> {
     )(input)
 }
 
-// TODO: move this elsewhere
+// TODO: move this to parser.rs after renaming parsers to parser
 pub fn take_until_and_consume<T, Input, Error: ParseError<Input>>(
     tag_to_match: T,
 ) -> impl Fn(Input) -> IResult<Input, Input, Error>

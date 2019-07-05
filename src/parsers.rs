@@ -1,8 +1,7 @@
 pub mod ccr_timing;
+pub mod run_fit;
 pub mod ultra_signup;
 pub mod web_scorer;
-
-use sports_metrics::duration::Duration;
 
 #[allow(dead_code)]
 fn body_from(uri: &str) -> Option<String> {
@@ -13,9 +12,4 @@ fn body_from(uri: &str) -> Option<String> {
             Ok(body) => Some(body),
         },
     }
-}
-
-pub trait NameAndTime {
-    fn name(&self) -> &str;
-    fn time(&self) -> Duration;
 }

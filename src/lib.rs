@@ -7,41 +7,47 @@ mod parsers;
 pub use error::Error;
 
 use {
-    crate::parsers::{ccr_timing, ultra_signup, web_scorer, NameAndTime},
+    crate::parsers::{ccr_timing, run_fit, ultra_signup, web_scorer},
     reqwest::Url,
     sports_metrics::duration::Duration,
     std::{
+        borrow::Cow,
         collections::HashMap,
         fs::File,
         io::Read,
         path::{Path, PathBuf},
         str::FromStr,
+        string::String,
     },
     structopt::StructOpt,
 };
 
 type Result<T> = std::result::Result<T, Error>;
 
+type Parser = &'static dyn Fn(&str) -> Option<Vec<(Cow<str>, Duration)>>;
+
 pub fn summarize(config: &Config) -> Result<()> {
     let mut h: HashMap<String, Vec<Option<Duration>>> = HashMap::new();
     let n = config.results.len();
+
+    let parsers = vec![
+        &ccr_timing::Placement::soloist_names_and_times as Parser,
+        &ultra_signup::Placement::names_and_times as Parser,
+        &web_scorer::Placement::names_and_times as Parser,
+        &run_fit::Placement::names_and_times as Parser,
+    ];
 
     for (i, source) in config.results.iter().enumerate() {
         match source {
             Source::Url(url) => println!("TODO: support urls ({})", url),
             Source::File(pathbuf) => {
                 let mut file = File::open(pathbuf)?;
-                let mut contents = String::new();
-                file.read_to_string(&mut contents)?;
+                let mut bytes = Vec::new();
+                file.read_to_end(&mut bytes)?;
 
-                if let Some(results) = ccr_timing::Results::results(&contents) {
-                    let names_and_times = ccr_timing::Placement::names_and_times(&results.soloists);
-                    merge(&mut h, names_and_times, i, n);
-                } else if let Some(results) = ultra_signup::Placement::results(&contents) {
-                    let names_and_times = ultra_signup::Placement::names_and_times(&results);
-                    merge(&mut h, names_and_times, i, n);
-                } else if let Some(results) = web_scorer::Placement::results(&contents) {
-                    let names_and_times = web_scorer::Placement::names_and_times(&results);
+                let contents = String::from_utf8_lossy(&bytes);
+
+                if let Some(names_and_times) = parsers.iter().find_map(|parser| parser(&contents)) {
                     merge(&mut h, names_and_times, i, n);
                 }
             }
@@ -53,12 +59,12 @@ pub fn summarize(config: &Config) -> Result<()> {
 
 fn merge(
     h: &mut HashMap<String, Vec<Option<Duration>>>,
-    names_and_times: Vec<&dyn NameAndTime>,
+    names_and_times: Vec<(Cow<str>, Duration)>,
     i: usize,
     n: usize,
 ) {
-    for result in names_and_times {
-        let name = names::canonical(&result.name());
+    for (name, duration) in names_and_times {
+        let name = names::canonical(name);
         // TODO: get rid of the unconditional to_string below
         let durations = h.entry(name.to_string()).or_insert_with(|| {
             let mut v = Vec::with_capacity(n);
@@ -67,7 +73,7 @@ fn merge(
             }
             v
         });
-        durations[i] = Some(result.time());
+        durations[i] = Some(duration);
     }
 }
 
@@ -88,7 +94,7 @@ fn print(all_results: HashMap<String, Vec<Option<Duration>>>) {
     results.sort();
 
     for (total, name, times) in results {
-        print!("{:>8} ", total);
+        print!("{:>9} ", total);
         for time in times {
             print!("{:>8} ", time);
         }

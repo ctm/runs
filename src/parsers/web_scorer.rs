@@ -1,20 +1,17 @@
-use crate::parsers::NameAndTime;
-
-use crate::ccr_timing::take_until_and_consume;
-
-use nom::{
-    branch::alt,
-    bytes::complete::{tag, take_until},
-    character::complete::multispace0,
-    combinator::{map, map_parser, map_res, opt, rest, value},
-    multi::many0,
-    sequence::{preceded, terminated, tuple},
-    IResult,
+use {
+    crate::ccr_timing::take_until_and_consume,
+    nom::{
+        branch::alt,
+        bytes::complete::{tag, take_until},
+        character::complete::multispace0,
+        combinator::{map, map_parser, map_res, opt, rest, value},
+        multi::many0,
+        sequence::{preceded, terminated, tuple},
+        IResult,
+    },
+    sports_metrics::duration::Duration,
+    std::{borrow::Cow, fmt, str::FromStr},
 };
-use sports_metrics::duration::Duration;
-use std::borrow::Cow;
-use std::fmt;
-use std::str::FromStr;
 
 #[derive(Debug)]
 pub struct Placement<'a> {
@@ -37,25 +34,20 @@ impl<'a> Placement<'a> {
         }
     }
 
-    pub fn results(contents: &'a str) -> Option<Vec<Self>> {
+    pub fn results<'b>(contents: &'b str) -> Option<Vec<Placement<'b>>> {
         match results(contents) {
             Ok((_, results)) => Some(results),
             Err(_) => None,
         }
     }
 
-    pub fn names_and_times(results: &'a [Self]) -> Vec<&'a dyn NameAndTime> {
-        results.iter().map(|r| r as &dyn NameAndTime).collect()
-    }
-}
-
-impl<'a> NameAndTime for Placement<'a> {
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn time(&self) -> Duration {
-        self.finish_time
+    pub fn names_and_times<'b>(input: &'b str) -> Option<Vec<(Cow<'b, str>, Duration)>> {
+        Self::results(input).map(|results| {
+            results
+                .into_iter()
+                .map(|placement| (placement.name, placement.finish_time.clone()))
+                .collect()
+        })
     }
 }
 

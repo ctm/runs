@@ -2,7 +2,7 @@
 //       me a chance to play with phf and also allows me to write more
 //       important functionality first.
 
-use phf::phf_map;
+use {phf::phf_map, std::borrow::Cow};
 
 static ALIASES: phf::Map<&'static str, &'static str> = phf_map! {
     "Rodrigo Romeradelafuente" => "Rodrigo Romera",
@@ -21,9 +21,9 @@ static ALIASES: phf::Map<&'static str, &'static str> = phf_map! {
     "Matthew Swanson" => "Matt Swanson",
 };
 
-pub fn canonical(name_or_alias: &str) -> &str {
-    if let Some(name) = ALIASES.get(name_or_alias) {
-        name
+pub fn canonical<'a>(name_or_alias: Cow<str>) -> Cow<str> {
+    if let Some(name) = ALIASES.get(name_or_alias.as_ref()) {
+        Cow::from(*name)
     } else {
         name_or_alias
     }
