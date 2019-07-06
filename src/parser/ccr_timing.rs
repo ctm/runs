@@ -1,13 +1,13 @@
 use {
+    crate::parser::take_until_and_consume,
     nom::{
         branch::alt,
-        bytes::complete::{tag, take, take_until},
+        bytes::complete::{tag, take},
         character::complete::multispace0,
         combinator::{cond, flat_map, map, map_parser, map_res, not, opt, value},
-        error::ParseError,
         multi::{many0, many_m_n},
         sequence::{preceded, terminated, tuple},
-        Compare, FindSubstring, IResult, InputLength, InputTake,
+        IResult,
     },
     sports_metrics::duration::Duration,
     std::{borrow::Cow, cmp::Ordering, fmt},
@@ -47,7 +47,7 @@ impl<'a> Placement<'a> {
             results
                 .soloists
                 .iter()
-                .map(|soloist| (Cow::from(soloist.name), soloist.total.clone()))
+                .map(|soloist| (Cow::from(soloist.name), soloist.total))
                 .collect()
         })
     }
@@ -183,19 +183,6 @@ fn all_category_blocks(input: &str) -> IResult<&str, Vec<Placement>> {
         many0(preceded(many0(junk_line), category_block)),
         |blocks| blocks.into_iter().flatten().collect(),
     )(input)
-}
-
-// TODO: move this to parser.rs after renaming parsers to parser
-pub fn take_until_and_consume<T, Input, Error: ParseError<Input>>(
-    tag_to_match: T,
-) -> impl Fn(Input) -> IResult<Input, Input, Error>
-where
-    Input: InputTake + FindSubstring<T> + Compare<T>,
-    T: InputLength + Clone,
-{
-    let cloned_tag_to_match = tag_to_match.clone();
-
-    terminated(take_until(tag_to_match), tag(cloned_tag_to_match))
 }
 
 fn junk_line(input: &str) -> IResult<&str, &str> {

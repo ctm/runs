@@ -1,5 +1,5 @@
 use {
-    crate::ccr_timing::take_until_and_consume,
+    crate::parser::take_until_and_consume,
     nom::{
         branch::alt,
         bytes::complete::{tag, take_until},
@@ -45,7 +45,7 @@ impl<'a> Placement<'a> {
         Self::results(input).map(|results| {
             results
                 .into_iter()
-                .map(|placement| (placement.name, placement.finish_time.clone()))
+                .map(|placement| (placement.name, placement.finish_time))
                 .collect()
         })
     }
@@ -112,7 +112,8 @@ fn place(input: &str) -> IResult<&str, u16> {
     map_res(inside_td("r-place"), |digits: &str| digits.parse())(input)
 }
 
-fn inside_td<'a>(class: &'a str) -> impl Fn(&'a str) -> IResult<&'a str, &'a str> {
+#[allow(clippy::needless_lifetimes)]
+fn inside_td<'a>(class: &'a str) -> impl Fn(&'a str) -> IResult<&str, &str> {
     preceded(
         tuple((multispace0, tag("<td class='"), tag(class), tag("'>"))),
         take_until_and_consume("</td>"),
@@ -126,9 +127,8 @@ fn bib(input: &str) -> IResult<&str, Option<Cow<str>>> {
     })(input)
 }
 
-fn optional_inside_td<'a>(
-    class: &'a str,
-) -> impl Fn(&'a str) -> IResult<&'a str, Option<Cow<'a, str>>> {
+#[allow(clippy::needless_lifetimes)]
+fn optional_inside_td<'a>(class: &'a str) -> impl Fn(&'a str) -> IResult<&str, Option<Cow<str>>> {
     map(inside_td(class), |value: &str| {
         let value = value.trim();
 

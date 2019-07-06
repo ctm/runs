@@ -75,7 +75,7 @@ impl Placement {
         Self::results(input).map(|results| {
             results
                 .into_iter()
-                .map(|placement| (Cow::from(placement.name), placement.time.clone()))
+                .map(|placement| (Cow::from(placement.name), placement.time))
                 .collect()
         })
     }

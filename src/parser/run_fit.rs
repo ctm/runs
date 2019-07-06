@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use {
-    crate::ccr_timing::take_until_and_consume,
+    crate::parser::take_until_and_consume,
     nom::{
         branch::alt,
         bytes::complete::tag,
@@ -32,8 +32,8 @@ impl Display for MaleOrFemale {
             f,
             "{}",
             match self {
-                Self::Male => "M",
-                Self::Female => "F",
+                MaleOrFemale::Male => "M",
+                MaleOrFemale::Female => "F",
             }
         )
     }
@@ -45,14 +45,14 @@ impl Display for MaleOrFemale {
 #[derive(Clone, Debug)]
 pub enum AgeGroup {
     Open,
-    AgeGroup(RangeInclusive<NonZeroU8>),
+    Ages(RangeInclusive<NonZeroU8>),
 }
 
 impl Display for AgeGroup {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            Self::Open => write!(f, "Open"),
-            Self::AgeGroup(range) => write!(f, "{}-{}", range.start(), range.end()),
+            AgeGroup::Open => write!(f, "Open"),
+            AgeGroup::Ages(range) => write!(f, "{}-{}", range.start(), range.end()),
         }
     }
 }
@@ -104,7 +104,7 @@ impl<'a> Placement<'a> {
         Self::results(input).map(|results| {
             results
                 .into_iter()
-                .map(|placement| (Cow::from(placement.name), placement.chip_time.clone()))
+                .map(|placement| (Cow::from(placement.name), placement.chip_time))
                 .collect()
         })
     }
@@ -218,7 +218,7 @@ fn age_group(input: &str) -> IResult<&str, AgeGroup> {
     alt((
         value(AgeGroup::Open, tag("Open")),
         map(tuple((terminated(age, tag("-")), age)), |(start, end)| {
-            AgeGroup::AgeGroup(start..=end)
+            AgeGroup::Ages(start..=end)
         }),
     ))(input)
 }

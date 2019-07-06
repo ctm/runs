@@ -1,13 +1,11 @@
-#![feature(proc_macro_hygiene)]
-
 mod error;
 mod names;
-mod parsers;
+mod parser;
 
 pub use error::Error;
 
 use {
-    crate::parsers::{ccr_timing, run_fit, ultra_signup, web_scorer},
+    crate::parser::{ccr_timing, run_fit, ultra_signup, web_scorer},
     reqwest::Url,
     sports_metrics::duration::Duration,
     std::{
@@ -39,7 +37,7 @@ pub fn summarize(config: &Config) -> Result<()> {
 
     for (i, source) in config.results.iter().enumerate() {
         match source {
-            Source::Url(url) => println!("TODO: support urls ({})", url),
+            Source::Url(_url) => println!("URLs are deliberately unsupported"),
             Source::File(pathbuf) => {
                 let mut file = File::open(pathbuf)?;
                 let mut bytes = Vec::new();
@@ -65,15 +63,20 @@ fn merge(
 ) {
     for (name, duration) in names_and_times {
         let name = names::canonical(name);
-        // TODO: get rid of the unconditional to_string below
-        let durations = h.entry(name.to_string()).or_insert_with(|| {
-            let mut v = Vec::with_capacity(n);
-            for _ in 0..n {
-                v.push(None);
+        match h.get_mut(name.as_ref()) {
+            Some(durations) => durations[i] = Some(duration),
+            None => {
+                let mut v = Vec::with_capacity(n);
+                for index in 0..n {
+                    if index == i {
+                        v.push(Some(duration))
+                    } else {
+                        v.push(None);
+                    }
+                }
+                h.insert(name.to_string(), v);
             }
-            v
-        });
-        durations[i] = Some(duration);
+        }
     }
 }
 
