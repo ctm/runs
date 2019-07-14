@@ -5,7 +5,7 @@ mod parser;
 pub use error::Error;
 
 use {
-    crate::parser::{ccr_timing, run_fit, ultra_signup, web_scorer},
+    crate::parser::{ath_links, ccr_timing, chrono_track, run_fit, taos, ultra_signup, web_scorer},
     digital_duration_nom::duration::Duration,
     reqwest::Url,
     std::{
@@ -33,11 +33,24 @@ pub fn summarize(config: &Config) -> Result<()> {
         &ultra_signup::Placement::names_and_times as Parser,
         &web_scorer::Placement::names_and_times as Parser,
         &run_fit::Placement::names_and_times as Parser,
+        &ath_links::Placement::names_and_times as Parser,
+        &chrono_track::Placement::names_and_times as Parser,
+        &taos::Placement::names_and_times as Parser,
     ];
 
     for (i, source) in config.results.iter().enumerate() {
         match source {
-            Source::Url(_url) => println!("URLs are deliberately unsupported"),
+            // For now, we just dump the body and don't actually use
+            // it.  Of course if that body is saved into a file, we
+            // can then use the file.  Without caching, I don't think
+            // we want to support using urls directly.
+            Source::Url(url) => {
+                let url = url.to_string();
+                eprintln!("url: {}", url);
+                if let Some(body) = ultra_signup::Placement::body_from(&url) {
+                    println!("{}", body);
+                }
+            }
             Source::File(pathbuf) => {
                 let mut file = File::open(pathbuf)?;
                 let mut bytes = Vec::new();
@@ -46,6 +59,7 @@ pub fn summarize(config: &Config) -> Result<()> {
                 let contents = String::from_utf8_lossy(&bytes);
 
                 if let Some(names_and_times) = parsers.iter().find_map(|parser| parser(&contents)) {
+                    dump_ian_scores(&names_and_times);
                     merge(&mut h, names_and_times, i, n);
                 }
             }
@@ -64,7 +78,15 @@ fn merge(
     for (name, duration) in names_and_times {
         let name = names::canonical(name);
         match h.get_mut(name.as_ref()) {
-            Some(durations) => durations[i] = Some(duration),
+            Some(durations) => {
+                if let Some(old_duration) = durations[i] {
+                    eprintln!(
+                        "Previous time of {} for {}, new time: {}",
+                        old_duration, name, duration
+                    );
+                }
+                durations[i] = Some(duration)
+            }
             None => {
                 let mut v = Vec::with_capacity(n);
                 for index in 0..n {
@@ -97,9 +119,9 @@ fn print(all_results: HashMap<String, Vec<Option<Duration>>>) {
     results.sort();
 
     for (total, name, times) in results {
-        print!("{:>9} ", total);
+        print!("{:>9.1} ", total);
         for time in times {
-            print!("{:>8} ", time);
+            print!("{:>8.1} ", time);
         }
         println!(" {}", name);
     }
@@ -145,5 +167,23 @@ pub struct Config {
 impl Config {
     pub fn new() -> Result<Self> {
         Ok(Config::from_iter_safe(std::env::args())?)
+    }
+}
+
+fn dump_ian_scores(names_and_times: &[(Cow<str>, Duration)]) {
+    let mut names_and_times = names_and_times.to_vec();
+
+    names_and_times.sort_by_key(|&(_, time)| time);
+    let n = names_and_times.len();
+    let half_n = n / 2;
+    let median = if n % 2 == 1 {
+        names_and_times[half_n].1
+    } else {
+        (names_and_times[half_n - 1].1 + names_and_times[half_n].1) / 2
+    };
+    let median: f64 = median.into();
+    for (name, time) in names_and_times {
+        let time: f64 = time.as_secs() as f64;
+        println!("{:>3}: {}", (median / time * 100.0).floor(), name);
     }
 }

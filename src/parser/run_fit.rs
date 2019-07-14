@@ -1,14 +1,17 @@
-#![allow(dead_code)]
+// NOTE: Even though this is called RunFit, it works for the Ruidoso
+//       Marathon, which isn't, AFAIK, associated with RunFit.  So, it
+//       appears that they both use the same software, but I don't yet
+//       know that software's name.
 
 use {
     crate::parser::take_until_and_consume,
     digital_duration_nom::{duration::Duration, option_display::OptionDisplay},
     nom::{
         branch::alt,
-        bytes::complete::tag,
-        character::complete::{digit1, multispace0},
-        combinator::{map, map_parser, map_res, opt, value},
-        multi::many1,
+        bytes::complete::{tag, take_until},
+        character::complete::multispace0,
+        combinator::{map, map_parser, map_res, opt, peek, value},
+        multi::{many0, many1},
         sequence::{preceded, terminated, tuple},
         IResult,
     },
@@ -16,7 +19,6 @@ use {
         borrow::Cow,
         fmt::{self, Display, Formatter},
         num::{NonZeroU16, NonZeroU8},
-        ops::RangeInclusive,
     },
 };
 
@@ -39,36 +41,6 @@ impl Display for MaleOrFemale {
     }
 }
 
-// This is the both the age group placement and the age group (not counting
-// gender), because that's a single column in the run fit results
-
-#[derive(Clone, Debug)]
-pub enum AgeGroup {
-    Open,
-    Ages(RangeInclusive<NonZeroU8>),
-}
-
-impl Display for AgeGroup {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            AgeGroup::Open => write!(f, "Open"),
-            AgeGroup::Ages(range) => write!(f, "{}-{}", range.start(), range.end()),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct AgeGroupPlace {
-    pub place: NonZeroU16,
-    pub age_group: AgeGroup,
-}
-
-impl Display for AgeGroupPlace {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}:{}", self.place, self.age_group)
-    }
-}
-
 #[derive(Debug)]
 pub struct Placement<'a> {
     pub place: NonZeroU16,
@@ -76,10 +48,10 @@ pub struct Placement<'a> {
     pub city: Option<&'a str>,
     pub bib: &'a str,
     pub age: NonZeroU8,
-    pub gender: MaleOrFemale,
-    pub age_group_place: AgeGroupPlace,
+    pub gender: Option<MaleOrFemale>,
+    pub age_group_place: &'a str,
     pub chip_time: Duration,
-    pub gun_time: Duration,
+    pub gun_time: Option<Duration>,
     pub pace: Option<&'a str>,
 }
 
@@ -102,31 +74,32 @@ impl<'a> Placement<'a> {
 
     pub fn names_and_times(input: &str) -> Option<Vec<(Cow<str>, Duration)>> {
         Self::results(input).map(|results| {
-            results
+            let mut names_and_times: Vec<_> = results
                 .into_iter()
                 .map(|placement| (Cow::from(placement.name), placement.chip_time))
-                .collect()
+                .collect();
+            names_and_times.sort();
+            names_and_times.dedup();
+            names_and_times
         })
     }
 }
 
 impl<'a> Display for Placement<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        type Printable<'a, 'b> = &'a dyn OptionDisplay<&'b str>;
-
         write!(
             f,
             "{:3} {:30} {:20} {:3} {:3} {:1} {:9} {:7.1} {:7.1} {:7}",
             self.place,
             self.name,
-            &self.city as Printable,
+            &self.city as &dyn OptionDisplay<&str>,
             self.bib,
             self.age,
-            self.gender,
+            &self.gender as &dyn OptionDisplay<MaleOrFemale>,
             self.age_group_place,
             self.chip_time,
-            self.gun_time,
-            &self.pace as Printable,
+            &self.gun_time as &dyn OptionDisplay<Duration>,
+            &self.pace as &dyn OptionDisplay<&str>,
         )
     }
 }
@@ -135,13 +108,6 @@ fn results(input: &str) -> IResult<&str, Vec<Placement>> {
     preceded(
         take_until_and_consume("<table border=0 cellpadding=0 cellspacing=0 class=\"racetable\">"),
         many1(placement),
-    )(input)
-}
-
-fn table_heading(input: &str) -> IResult<&str, ()> {
-    value(
-        (),
-        tuple((tr, td, close_tr, take_until_and_consume("</tr>"))),
     )(input)
 }
 
@@ -167,7 +133,7 @@ fn placement(input: &str) -> IResult<&str, Placement> {
     map(
         tuple((
             preceded(
-                tuple((opt(table_heading), tr)),
+                tuple((many0(heading_tr), tr)),
                 map_res(td, |digits: &str| digits.parse()),
             ),
             td,
@@ -180,10 +146,10 @@ fn placement(input: &str) -> IResult<&str, Placement> {
             }),
             td,
             map_res(td, |digits: &str| digits.parse()),
-            map_parser(td, gender),
-            map_parser(td, age_group_place),
+            opt(map_parser(td, gender)),
+            td,
             map_res(td, |duration| duration.parse()),
-            map_res(td, |duration| duration.parse()),
+            opt(map_res(td, |duration| duration.parse())),
             terminated(opt(td), close_tr),
         )),
         |(place, name, city, bib, age, gender, age_group_place, chip_time, gun_time, pace)| {
@@ -203,33 +169,36 @@ fn placement(input: &str) -> IResult<&str, Placement> {
     )(input)
 }
 
-fn place(input: &str) -> IResult<&str, NonZeroU16> {
-    map_res(digit1, |digits: &str| digits.parse())(input)
-}
-
-fn age_group_place(input: &str) -> IResult<&str, AgeGroupPlace> {
-    map(
-        tuple((terminated(place, tag(":")), age_group)),
-        |(place, age_group)| AgeGroupPlace { place, age_group },
-    )(input)
-}
-
-fn age_group(input: &str) -> IResult<&str, AgeGroup> {
-    alt((
-        value(AgeGroup::Open, tag("Open")),
-        map(tuple((terminated(age, tag("-")), age)), |(start, end)| {
-            AgeGroup::Ages(start..=end)
-        }),
-    ))(input)
-}
-
-fn age(input: &str) -> IResult<&str, NonZeroU8> {
-    map_res(preceded(multispace0, digit1), |digits: &str| digits.parse())(input)
-}
-
 fn gender(input: &str) -> IResult<&str, MaleOrFemale> {
     alt((
         value(MaleOrFemale::Male, tag("M")),
         value(MaleOrFemale::Female, tag("F")),
     ))(input)
+}
+
+// ========================================================================
+
+fn heading_tr(input: &str) -> IResult<&str, ()> {
+    value((), tuple((multispace0, tr, many1(heading_td), close_tr)))(input)
+}
+
+fn heading_td(input: &str) -> IResult<&str, ()> {
+    value(
+        (),
+        tuple((
+            multispace0,
+            alt((tag("<td class=h"), navigation_open_td)),
+            take_until_and_consume("</td>"),
+        )),
+    )(input)
+}
+
+// Ugh! The Ruidoso Marathon has navigation tds that use a class that starts
+// with a "d", which means I need to see if there's a colspan to figure out
+// if this is one of those.
+fn navigation_open_td(input: &str) -> IResult<&str, &str> {
+    preceded(
+        tag("<td"),
+        peek(map_parser(take_until(">"), take_until("colspan=\""))),
+    )(input)
 }

@@ -8,6 +8,13 @@ use {
     std::{borrow::Cow, str::FromStr},
 };
 
+pub enum Status {
+    Finished = 1,
+    DidNotFinish = 2,
+    DidNotStart = 3,
+    Disqualified = 5,
+}
+
 // This is what we're given.  It's close to what we want, but it has some
 // fields we don't understand and also has inconsistent use of snake-case
 // and time is a string.
@@ -31,7 +38,7 @@ struct PlacementJson {
     race_count: u16,     // 0
     runner_rank: f64,    // 97.44
     state: String,       // "AZ"
-    status: u8,          // 1 appears to be finished, 2 DNF, 3 DNS?
+    status: u8,          // 1 Finished, 2 DNF, 3 DNS
     time: String,        // "16405000" (that's the time in milliseconds as a string)
 }
 
@@ -49,6 +56,7 @@ pub struct Placement {
     pub place: u16,          // 1
     pub runner_rank: f64,    // 97.44
     pub state: String,       // "AZ"
+    pub status: Status,
     pub time: Duration,
     pub name: String, // This one we create ourselves
 }
@@ -63,19 +71,24 @@ impl Placement {
     }
 
     pub fn results(contents: &str) -> Option<Vec<Self>> {
-        let fiftyk_json: Result<Vec<PlacementJson>, serde_json::error::Error> =
+        let json: Result<Vec<PlacementJson>, serde_json::error::Error> =
             serde_json::from_str(&contents);
-        match fiftyk_json {
-            Ok(fiftyk_json) => Some(fiftyk_json.into_iter().map(Self::from).collect()),
+        match json {
+            Ok(json) => Some(json.into_iter().map(Self::from).collect()),
             Err(_) => None,
         }
     }
 
     pub fn names_and_times(input: &str) -> Option<Vec<(Cow<str>, Duration)>> {
+        use Status::*;
+
         Self::results(input).map(|results| {
             results
                 .into_iter()
-                .map(|placement| (Cow::from(placement.name), placement.time))
+                .filter_map(|placement| match placement.status {
+                    Finished => Some((Cow::from(placement.name), placement.time)),
+                    _ => None,
+                })
                 .collect()
         })
     }
@@ -83,6 +96,13 @@ impl Placement {
 
 impl From<PlacementJson> for Placement {
     fn from(json: PlacementJson) -> Self {
+        use Status::*;
+
+        const FINISHED: u8 = Finished as u8;
+        const DID_NOT_FINISH: u8 = DidNotFinish as u8;
+        const DID_NOT_START: u8 = DidNotStart as u8;
+        const DISQUALIFIED: u8 = Disqualified as u8;
+
         let age = json.age;
         let age_rank = json.age_rank;
         let age_group = json.agegroup;
@@ -96,6 +116,13 @@ impl From<PlacementJson> for Placement {
         let place = json.place;
         let runner_rank = json.runner_rank;
         let state = json.state;
+        let status = match json.status {
+            FINISHED => Finished,
+            DID_NOT_FINISH => DidNotFinish,
+            DID_NOT_START => DidNotStart,
+            DISQUALIFIED => Disqualified,
+            other => panic!("Unknown status {}", other),
+        };
 
         let milliseconds = u64::from_str(&json.time).unwrap();
         let secs = milliseconds / 1000;
@@ -118,6 +145,7 @@ impl From<PlacementJson> for Placement {
             place,
             runner_rank,
             state,
+            status,
             time,
             name,
         }
