@@ -1,5 +1,6 @@
 use {
     crate::parser::take_until_and_consume,
+    digital_duration_nom::duration::Duration,
     nom::{
         branch::alt,
         bytes::complete::{tag, take_until},
@@ -9,7 +10,6 @@ use {
         sequence::{preceded, terminated, tuple},
         IResult,
     },
-    sports_metrics::duration::Duration,
     std::{borrow::Cow, fmt, str::FromStr},
 };
 

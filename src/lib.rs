@@ -6,8 +6,8 @@ pub use error::Error;
 
 use {
     crate::parser::{ccr_timing, run_fit, ultra_signup, web_scorer},
+    digital_duration_nom::duration::Duration,
     reqwest::Url,
-    sports_metrics::duration::Duration,
     std::{
         borrow::Cow,
         collections::HashMap,

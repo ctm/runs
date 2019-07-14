@@ -1,10 +1,10 @@
 use {
+    digital_duration_nom::duration::Duration,
     nom::{
         bytes::complete::tag, character::complete::digit1, combinator::map, sequence::preceded,
         IResult,
     },
     serde::Deserialize,
-    sports_metrics::duration::Duration,
     std::{borrow::Cow, str::FromStr},
 };
 

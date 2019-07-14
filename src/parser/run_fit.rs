@@ -2,6 +2,7 @@
 
 use {
     crate::parser::take_until_and_consume,
+    digital_duration_nom::{duration::Duration, option_display::OptionDisplay},
     nom::{
         branch::alt,
         bytes::complete::tag,
@@ -11,7 +12,6 @@ use {
         sequence::{preceded, terminated, tuple},
         IResult,
     },
-    sports_metrics::{duration::Duration, option_display::OptionDisplay},
     std::{
         borrow::Cow,
         fmt::{self, Display, Formatter},

@@ -12,7 +12,7 @@ nom = "5"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 htmlescape = "0.3.1"
-sports-metrics = { version = "0.3.0", path = "../playpens/rust/sports-metrics" }
+digital-duration-nom = { version = "0.1.0", path = "../digital-duration-nom" }
 reqwest = "0.9.10"
 structopt = "0.2.14"
 phf = "0.7.24"

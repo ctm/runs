@@ -1,5 +1,6 @@
 use {
     crate::parser::take_until_and_consume,
+    digital_duration_nom::duration::Duration,
     nom::{
         branch::alt,
         bytes::complete::{tag, take},
@@ -9,7 +10,6 @@ use {
         sequence::{preceded, terminated, tuple},
         IResult,
     },
-    sports_metrics::duration::Duration,
     std::{borrow::Cow, cmp::Ordering, fmt},
 };
 
@@ -55,7 +55,7 @@ impl<'a> Placement<'a> {
 
 impl<'a> fmt::Display for Placement<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        type Printable<'a> = &'a dyn sports_metrics::option_display::OptionDisplay<Duration>;
+        type Printable<'a> = &'a dyn digital_duration_nom::option_display::OptionDisplay<Duration>;
 
         write!(
             f,
@@ -346,7 +346,7 @@ fn non_blank_duration(input: &str) -> IResult<&str, Option<Duration>> {
 }
 
 fn optionally_left_padded_duration(input: &str) -> IResult<&str, Duration> {
-    preceded(multispace0, sports_metrics::duration::duration_parser)(input)
+    preceded(multispace0, digital_duration_nom::duration::duration_parser)(input)
 }
 
 #[cfg(test)]
