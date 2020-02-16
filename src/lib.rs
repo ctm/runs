@@ -5,7 +5,7 @@ mod parser;
 pub use error::Error;
 
 use {
-    crate::parser::{ath_links, ccr_timing, chrono_track, run_fit, taos, ultra_signup, web_scorer},
+    crate::parser::{ath_links, ccr_timing, chrono_track, run_fit, runsignup, taos, ultra_signup, web_scorer},
     digital_duration_nom::duration::Duration,
     reqwest::Url,
     std::{
@@ -33,6 +33,7 @@ pub fn summarize(config: &Config) -> Result<()> {
         &ultra_signup::Placement::names_and_times as Parser,
         &web_scorer::Placement::names_and_times as Parser,
         &run_fit::Placement::names_and_times as Parser,
+        &runsignup::Placement::names_and_times as Parser,
         &ath_links::Placement::names_and_times as Parser,
         &chrono_track::Placement::names_and_times as Parser,
         &taos::Placement::names_and_times as Parser,

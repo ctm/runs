@@ -30,6 +30,7 @@ fn main() {
         .entry("Kenneth Oconnor", "\"Kenneth O'Connor\"")
         .entry("Michelle Bourret", "\"Suzanne Bourret\"")
         .entry("Matthew Swanson", "\"Matt Swanson\"")
+        .entry("Jennifer Galasso", "\"Jenny Galasso\"")
         .build(&mut file)
         .unwrap();
     write!(&mut file, ";\n").unwrap();
