@@ -33,5 +33,5 @@ fn main() {
         .entry("Jennifer Galasso", "\"Jenny Galasso\"")
         .build(&mut file)
         .unwrap();
-    write!(&mut file, ";\n").unwrap();
+    writeln!(&mut file, ";").unwrap();
 }

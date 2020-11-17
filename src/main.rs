@@ -1,4 +1,4 @@
-use runs::{Config, Error};
+use {anyhow::Error, runs::Config};
 
 fn runs() -> Result<(), Error> {
     let config = Config::new()?;

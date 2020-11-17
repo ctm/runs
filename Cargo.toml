@@ -16,3 +16,4 @@ digital-duration-nom = { version = "0.1.0", path = "../digital-duration-nom" }
 reqwest = "0.9.10"
 structopt = "0.2.14"
 phf = "0.7.24"
+anyhow = "1.0"

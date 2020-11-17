@@ -1,11 +1,11 @@
-mod error;
 mod names;
 mod parser;
 
-pub use error::Error;
-
 use {
-    crate::parser::{ath_links, ccr_timing, chrono_track, run_fit, runsignup, taos, ultra_signup, web_scorer},
+    crate::parser::{
+        ath_links, ccr_timing, chrono_track, run_fit, runsignup, taos, ultra_signup, web_scorer,
+    },
+    anyhow::Error,
     digital_duration_nom::duration::Duration,
     reqwest::Url,
     std::{
