@@ -5,15 +5,15 @@ authors = ["Clifford T. Matthews <ctm@devctm.com>"]
 edition = "2018"
 
 [build-dependencies]
-phf_codegen = "0.7.24"
+phf_codegen = "0.8.0"
 
 [dependencies]
-nom = "5"
+nom = "6"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 htmlescape = "0.3.1"
-digital-duration-nom = { version = "0.1.0", path = "../digital-duration-nom" }
-reqwest = "0.9.10"
-structopt = "0.2.14"
-phf = "0.7.24"
+digital-duration-nom = { version = "0.2.0", path = "../digital-duration-nom" }
+reqwest = { version = "0.10.8", features = ["blocking"] }
+structopt = "0.3.20"
+phf = "0.8.0"
 anyhow = "1.0"

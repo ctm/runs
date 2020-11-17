@@ -113,7 +113,7 @@ fn place(input: &str) -> IResult<&str, u16> {
 }
 
 #[allow(clippy::needless_lifetimes)]
-fn inside_td<'a>(class: &'a str) -> impl Fn(&'a str) -> IResult<&str, &str> {
+fn inside_td<'a>(class: &'a str) -> impl FnMut(&'a str) -> IResult<&str, &str> {
     preceded(
         tuple((multispace0, tag("<td class='"), tag(class), tag("'>"))),
         take_until_and_consume("</td>"),
@@ -128,7 +128,9 @@ fn bib(input: &str) -> IResult<&str, Option<Cow<str>>> {
 }
 
 #[allow(clippy::needless_lifetimes)]
-fn optional_inside_td<'a>(class: &'a str) -> impl Fn(&'a str) -> IResult<&str, Option<Cow<str>>> {
+fn optional_inside_td<'a>(
+    class: &'a str,
+) -> impl FnMut(&'a str) -> IResult<&str, Option<Cow<str>>> {
     map(inside_td(class), |value: &str| {
         let value = value.trim();
 

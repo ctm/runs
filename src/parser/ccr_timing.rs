@@ -200,7 +200,7 @@ fn arrow_line(input: &str) -> IResult<&str, Option<&str>> {
     map(tag("<h3><a name=\""), |_| None)(input)
 }
 
-fn discard_through(name: &str) -> impl Fn(&str) -> IResult<&str, ()> {
+fn discard_through(name: &str) -> impl FnMut(&str) -> IResult<&str, ()> {
     let to_find = format!("<h3><a name=\"{}\"", name);
 
     move |input| {
@@ -245,7 +245,7 @@ fn division_line(input: &str) -> IResult<&str, Option<&str>> {
 
 fn placement<'a>(
     header_category: Option<&'a str>,
-) -> impl Fn(&'a str) -> IResult<&'a str, Placement<'a>> + 'a {
+) -> impl FnMut(&'a str) -> IResult<&'a str, Placement<'a>> + 'a {
     map(
         tuple((
             terminated(right_justified_five_digit_number, tag(" ")),
@@ -323,7 +323,7 @@ fn upto_fourteen_characters(input: &str) -> IResult<&str, &str> {
     map(take(14usize), |letters: &str| letters.trim_end())(input)
 }
 
-fn name(category: Option<&str>) -> impl Fn(&str) -> IResult<&str, &str> + '_ {
+fn name(category: Option<&str>) -> impl FnMut(&str) -> IResult<&str, &str> + '_ {
     move |input| {
         let n: usize = match category {
             None => 25,

@@ -16,9 +16,9 @@ use nom::{
 
 #[allow(dead_code)]
 fn body_from(uri: &str) -> Option<String> {
-    match reqwest::get(uri) {
+    match reqwest::blocking::get(uri) {
         Err(_) => None,
-        Ok(mut response) => match response.text() {
+        Ok(response) => match response.text() {
             Err(_) => None,
             Ok(body) => Some(body),
         },
@@ -27,7 +27,7 @@ fn body_from(uri: &str) -> Option<String> {
 
 pub fn take_until_and_consume<T, Input, Error: ParseError<Input>>(
     tag_to_match: T,
-) -> impl Fn(Input) -> IResult<Input, Input, Error>
+) -> impl FnMut(Input) -> IResult<Input, Input, Error>
 where
     Input: InputTake + FindSubstring<T> + Compare<T>,
     T: InputLength + Clone,
