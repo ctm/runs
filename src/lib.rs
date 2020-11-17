@@ -5,7 +5,7 @@ use {
     crate::parser::{
         ath_links, ccr_timing, chrono_track, run_fit, runsignup, taos, ultra_signup, web_scorer,
     },
-    anyhow::Error,
+    anyhow::{Error, Result},
     digital_duration_nom::duration::Duration,
     reqwest::Url,
     std::{
@@ -19,8 +19,6 @@ use {
     },
     structopt::StructOpt,
 };
-
-type Result<T> = std::result::Result<T, Error>;
 
 type Parser = &'static dyn Fn(&str) -> Option<Vec<(Cow<str>, Duration)>>;
 

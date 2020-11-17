@@ -1,6 +1,6 @@
-use {anyhow::Error, runs::Config};
+use {anyhow::Result, runs::Config};
 
-fn runs() -> Result<(), Error> {
+fn runs() -> Result<()> {
     let config = Config::new()?;
 
     runs::summarize(&config)
