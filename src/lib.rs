@@ -57,7 +57,7 @@ pub fn summarize(config: &Config) -> Result<()> {
                 let contents = String::from_utf8_lossy(&bytes);
 
                 if let Some(names_and_times) = parsers.iter().find_map(|parser| parser(&contents)) {
-                    dump_ian_scores(&names_and_times);
+                    // dump_ian_scores(&names_and_times);
                     merge(&mut h, names_and_times, i, n);
                 }
             }
@@ -168,6 +168,13 @@ impl Config {
     }
 }
 
+// This code never should have gone into master, but I wound up doing
+// a bunch of work in my for-ian branch that really should have been
+// done elsewhere.  However, I had a soft deadline to get for-ian
+// done, so I didn't care.  Then covid hit and that soft deadline
+// disappeared, so rather than finish for-ian, I simply did some
+// minimal squashing and tossed it in.
+#[allow(dead_code)]
 fn dump_ian_scores(names_and_times: &[(Cow<str>, Duration)]) {
     let mut names_and_times = names_and_times.to_vec();
 
