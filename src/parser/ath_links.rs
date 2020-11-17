@@ -1,6 +1,7 @@
 use {
+    super::duration_deserializer,
     digital_duration_nom::duration::Duration,
-    serde::{Deserialize, Deserializer},
+    serde::Deserialize,
     std::{
         borrow::Cow,
         num::{NonZeroU16, NonZeroU8},
@@ -42,10 +43,4 @@ impl Placement {
                 .collect()
         })
     }
-}
-
-// TODO: this should be put somewhere else
-fn duration_deserializer<'de, D: Deserializer<'de>>(d: D) -> Result<Duration, D::Error> {
-    let s: String = String::deserialize(d)?;
-    Ok(s.parse::<Duration>().unwrap()) // TODO: map_err instead Ok(...unwrap())
 }

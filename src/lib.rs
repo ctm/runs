@@ -3,7 +3,8 @@ mod parser;
 
 use {
     crate::parser::{
-        ath_links, ccr_timing, chrono_track, run_fit, runsignup, taos, ultra_signup, web_scorer,
+        ancient_ultra_signup, ath_links, ccr_timing, chrono_track, run_fit, runsignup, taos,
+        ultra_signup, web_scorer,
     },
     anyhow::{Error, Result},
     digital_duration_nom::duration::Duration,
@@ -27,14 +28,15 @@ pub fn summarize(config: &Config) -> Result<()> {
     let n = config.results.len();
 
     let parsers = vec![
+        &ultra_signup::StatusesWithPlacements::names_and_times as Parser,
         &ccr_timing::Placement::soloist_names_and_times as Parser,
-        &ultra_signup::Placement::names_and_times as Parser,
         &web_scorer::Placement::names_and_times as Parser,
         &run_fit::Placement::names_and_times as Parser,
         &runsignup::Placement::names_and_times as Parser,
         &ath_links::Placement::names_and_times as Parser,
         &chrono_track::Placement::names_and_times as Parser,
         &taos::Placement::names_and_times as Parser,
+        &ancient_ultra_signup::Placement::names_and_times as Parser,
     ];
 
     for (i, source) in config.results.iter().enumerate() {
@@ -46,9 +48,6 @@ pub fn summarize(config: &Config) -> Result<()> {
             Source::Url(url) => {
                 let url = url.to_string();
                 eprintln!("url: {}", url);
-                if let Some(body) = ultra_signup::Placement::body_from(&url) {
-                    println!("{}", body);
-                }
             }
             Source::File(pathbuf) => {
                 let mut file = File::open(pathbuf)?;

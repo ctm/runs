@@ -1,3 +1,4 @@
+pub mod ancient_ultra_signup;
 pub mod ath_links;
 pub mod ccr_timing;
 pub mod chrono_track;
@@ -7,11 +8,15 @@ pub mod taos;
 pub mod ultra_signup;
 pub mod web_scorer;
 
-use nom::{
-    bytes::complete::{tag, take_until},
-    error::ParseError,
-    sequence::terminated,
-    Compare, FindSubstring, IResult, InputLength, InputTake,
+use {
+    digital_duration_nom::duration::Duration,
+    nom::{
+        bytes::complete::{tag, take_until},
+        error::ParseError,
+        sequence::terminated,
+        Compare, FindSubstring, IResult, InputLength, InputTake,
+    },
+    serde::{Deserialize, Deserializer},
 };
 
 #[allow(dead_code)]
@@ -35,4 +40,9 @@ where
     let cloned_tag_to_match = tag_to_match.clone();
 
     terminated(take_until(tag_to_match), tag(cloned_tag_to_match))
+}
+
+fn duration_deserializer<'de, D: Deserializer<'de>>(d: D) -> Result<Duration, D::Error> {
+    let s: String = String::deserialize(d)?;
+    Ok(s.parse::<Duration>().unwrap()) // TODO: map_err instead Ok(...unwrap())
 }
