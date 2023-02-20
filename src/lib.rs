@@ -4,10 +4,11 @@ mod parser;
 use {
     crate::parser::{
         ancient_ultra_signup, ath_links, ccr_timing, chrono_track, run_fit, runsignup, taos,
-        ultra_signup, web_scorer,
+        ultra_signup, ultra_signup_mhtml, web_scorer,
     },
     anyhow::{Error, Result},
     digital_duration_nom::duration::Duration,
+    mail_parser::Message,
     reqwest::Url,
     std::{
         borrow::Cow,
@@ -37,6 +38,7 @@ pub fn summarize(config: &Config) -> Result<()> {
         &chrono_track::Placement::names_and_times as Parser,
         &taos::Placement::names_and_times as Parser,
         &ancient_ultra_signup::Placement::names_and_times as Parser,
+        &ultra_signup_mhtml::Placement::names_and_times as Parser,
     ];
 
     for (i, source) in config.results.iter().enumerate() {
@@ -54,8 +56,9 @@ pub fn summarize(config: &Config) -> Result<()> {
                 let mut bytes = Vec::new();
                 file.read_to_end(&mut bytes)?;
 
-                let contents = String::from_utf8_lossy(&bytes);
-
+                let contents = Message::parse(&bytes)
+                    .and_then(|message| message.body_html(0).map(|body| body.into_owned()))
+                    .unwrap_or_else(|| String::from_utf8_lossy(&bytes).into());
                 if let Some(names_and_times) = parsers.iter().find_map(|parser| parser(&contents)) {
                     // dump_ian_scores(&names_and_times);
                     merge(&mut h, names_and_times, i, n);

@@ -6,7 +6,7 @@ use {
         bytes::complete::{tag, take_until},
         character::complete::multispace0,
         combinator::{map, map_parser, map_res, opt, rest, value},
-        multi::many1,
+        multi::many0,
         sequence::{preceded, terminated, tuple},
         IResult,
     },
@@ -25,23 +25,12 @@ pub struct Placement<'a> {
 }
 
 impl<'a> Placement<'a> {
-    #[allow(dead_code)]
-    pub fn body_from(uri: &str) -> Option<String> {
-        if uri.starts_with("https://www.webscorer.com/race?raceid=") {
-            super::body_from(uri)
-        } else {
-            None
-        }
-    }
-
     pub fn results(contents: &str) -> Option<Vec<Placement>> {
-        match results(contents) {
-            Ok((_, results)) => Some(results),
-            Err(_) => None,
-        }
+        results(contents).ok().map(|(_, results)| results)
     }
 
     pub fn names_and_times(input: &str) -> Option<Vec<(Cow<str>, Duration)>> {
+        eprintln!("input: {input}");
         Self::results(input).map(|results| {
             results
                 .into_iter()
@@ -67,7 +56,7 @@ impl<'a> fmt::Display for Placement<'a> {
 }
 
 fn results(input: &str) -> IResult<&str, Vec<Placement>> {
-    preceded(take_until_and_consume("<tbody>"), many1(placement))(input)
+    preceded(take_until_and_consume("<tbody>"), many0(placement))(input)
 }
 
 fn placement(input: &str) -> IResult<&str, Placement> {

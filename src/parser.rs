@@ -6,6 +6,7 @@ pub mod run_fit;
 pub mod runsignup;
 pub mod taos;
 pub mod ultra_signup;
+pub mod ultra_signup_mhtml;
 pub mod web_scorer;
 
 use {

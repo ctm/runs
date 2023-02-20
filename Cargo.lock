@@ -489,6 +489,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "mail-parser"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a2e03aa1d18528b45d0e79e46790f38cfeece6cce3af17a85912677272f36cd"
+
+[[package]]
 name = "memchr"
 version = "2.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -894,6 +900,7 @@ dependencies = [
  "anyhow",
  "digital-duration-nom",
  "htmlescape",
+ "mail-parser",
  "nom",
  "phf",
  "phf_codegen",
