@@ -47,7 +47,15 @@ impl StatusesWithPlacements {
         Self::results(input).and_then(|swp| {
             swp.0
                 .into_iter()
-                .find(|(swc, _)| matches!(swc, StatusWithCount { status: Status::Finishers, .. }))
+                .find(|(swc, _)| {
+                    matches!(
+                        swc,
+                        StatusWithCount {
+                            status: Status::Finishers,
+                            ..
+                        }
+                    )
+                })
                 .map(|(_, placements)| {
                     placements
                         .into_iter()
