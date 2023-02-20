@@ -118,13 +118,34 @@ fn print(all_results: HashMap<String, Vec<Option<Duration>>>) {
         .collect();
     results.sort();
 
+    let (total_width, name_width, times_widths) = widths(&results);
+
     for (total, name, times) in results {
-        print!("{:>9.1} ", total);
-        for time in times {
-            print!("{:>8.1} ", time);
+        print!("{name:>name_width$}");
+        print!(" {total:>total_width$.1}");
+        for (time, time_width) in times.iter().zip(times_widths.iter()) {
+            print!(" {time:>time_width$.1}");
         }
-        println!(" {}", name);
+        println!();
     }
+}
+
+fn widths(results: &[(Duration, &String, Vec<&Duration>)]) -> (usize, usize, Vec<usize>) {
+    use std::cmp::max;
+
+    let n_elements = results.get(0).map(|(_, _, v)| v.len()).unwrap_or(0);
+    let time_widths = vec![0; n_elements];
+    results
+        .iter()
+        .fold((0, 0, time_widths), |mut triple, (total, name, times)| {
+            let (ref mut total_width, ref mut name_width, ref mut times_width) = triple;
+            *total_width = max(*total_width, format!("{total:.1}").len());
+            *name_width = max(*name_width, name.to_string().len());
+            for (times_width, time) in times_width.iter_mut().zip(times) {
+                *times_width = max(*times_width, format!("{time:.1}").len());
+            }
+            triple
+        })
 }
 
 #[derive(Debug)]
