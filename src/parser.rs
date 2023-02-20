@@ -44,5 +44,5 @@ where
 
 fn duration_deserializer<'de, D: Deserializer<'de>>(d: D) -> Result<Duration, D::Error> {
     let s: String = String::deserialize(d)?;
-    Ok(s.parse::<Duration>().unwrap()) // TODO: map_err instead Ok(...unwrap())
+    s.parse::<Duration>().map_err(serde::de::Error::custom)
 }

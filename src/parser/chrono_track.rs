@@ -1,4 +1,5 @@
 use {
+    crate::parser,
     digital_duration_nom::duration::Duration,
     serde::{Deserialize, Deserializer},
     std::{
@@ -12,9 +13,9 @@ pub struct Placement {
     rank: NonZeroU16,
     name: String,
     bib: String,
-    #[serde(deserialize_with = "duration_deserializer")]
+    #[serde(deserialize_with = "parser::duration_deserializer")]
     time: Duration,
-    #[serde(deserialize_with = "duration_deserializer")]
+    #[serde(deserialize_with = "parser::duration_deserializer")]
     pace: Duration,
     hometown: String,
     age: Option<NonZeroU8>,
@@ -44,10 +45,4 @@ impl Placement {
                 .collect()
         })
     }
-}
-
-// TODO: this should be put somewhere else
-fn duration_deserializer<'de, D: Deserializer<'de>>(d: D) -> Result<Duration, D::Error> {
-    let s: String = String::deserialize(d)?;
-    Ok(s.parse::<Duration>().unwrap()) // TODO: map_err instead Ok(...unwrap())
 }
