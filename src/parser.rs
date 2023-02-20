@@ -36,11 +36,9 @@ pub fn take_until_and_consume<T, Input, Error: ParseError<Input>>(
 ) -> impl FnMut(Input) -> IResult<Input, Input, Error>
 where
     Input: InputTake + FindSubstring<T> + Compare<T>,
-    T: InputLength + Clone,
+    T: InputLength + Copy,
 {
-    let cloned_tag_to_match = tag_to_match.clone();
-
-    terminated(take_until(tag_to_match), tag(cloned_tag_to_match))
+    terminated(take_until(tag_to_match), tag(tag_to_match))
 }
 
 fn duration_deserializer<'de, D: Deserializer<'de>>(d: D) -> Result<Duration, D::Error> {
