@@ -1,86 +1,87 @@
+// NOTE: this started out as the web_scorer HTML scraper, because that
+// one handles tr elements nicely.  However, to make this more like
+// the other UltraSignup scrapers, I'll need to take the various
+// statuses into account, which is more work.
+
 use {
     crate::parser::take_until_and_consume,
     digital_duration_nom::duration::Duration,
     nom::{
-        branch::alt,
-        bytes::complete::{tag, take_until},
-        character::complete::multispace0,
-        combinator::{map, map_parser, map_res, opt, rest, value},
-        multi::many0,
+        combinator::{map, map_res, value},
+        multi::many1,
         sequence::{preceded, terminated, tuple},
         IResult,
     },
-    std::{borrow::Cow, fmt, str::FromStr},
+    std::{
+        borrow::Cow::{self, Borrowed},
+        num::NonZeroU8,
+    },
 };
 
+#[allow(dead_code)]
 #[derive(Debug)]
-pub struct Placement<'a> {
-    pub place: u16,
-    pub bib: Option<Cow<'a, str>>,
-    pub name: Cow<'a, str>,
-    pub team: Option<Cow<'a, str>>,
-    pub category: Option<Cow<'a, str>>,
-    pub gender: Option<Cow<'a, str>>,
-    pub finish_time: Duration,
+pub(crate) struct Placement<'a> {
+    place: u16,
+    first: Cow<'a, str>,
+    last: Cow<'a, str>,
+    city: Option<Cow<'a, str>>,
+    state: Option<Cow<'a, str>>,
+    age: NonZeroU8,
+    gender: Cow<'a, str>,
+    gp: u16,
+    time: Duration,
+    rank: f32,
 }
 
 impl<'a> Placement<'a> {
-    pub fn results(contents: &str) -> Option<Vec<Placement>> {
+    fn results(contents: &str) -> Option<Vec<Placement>> {
         results(contents).ok().map(|(_, results)| results)
     }
 
     pub fn names_and_times(input: &str) -> Option<Vec<(Cow<str>, Duration)>> {
-        eprintln!("input: {input}");
         Self::results(input).map(|results| {
             results
                 .into_iter()
-                .map(|placement| (placement.name, placement.finish_time))
+                .map(|placement| {
+                    (
+                        format!("{} {}", placement.first, placement.last).into(),
+                        placement.time,
+                    )
+                })
                 .collect()
         })
     }
 }
 
-impl<'a> fmt::Display for Placement<'a> {
-    // NOTE: we're currently skipping category here
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let gender = match &self.gender {
-            None => " ",
-            Some(value) => value,
-        };
-        write!(
-            f,
-            "{:3} {:1} {:7.1} {:30}",
-            self.place, gender, self.finish_time, &self.name
-        )
-    }
-}
-
 fn results(input: &str) -> IResult<&str, Vec<Placement>> {
-    preceded(take_until_and_consume("<tbody>"), many0(placement))(input)
+    preceded(take_until_and_consume("><tbody>"), many1(placement))(input)
 }
 
 fn placement(input: &str) -> IResult<&str, Placement> {
     map(
         tuple((
             preceded(tr_line, place),
-            bib,
-            name_and_team,
-            category,
+            first,
+            last,
+            city,
+            state,
+            age,
             gender,
-            terminated(finish_time, take_until_and_consume("</tr>")),
+            gp,
+            time,
+            terminated(rank, take_until_and_consume("</tr>")),
         )),
-        |(place, bib, name_and_team, category, gender, finish_time)| {
-            let finish_time = Duration::from_str(finish_time).unwrap();
-            let (name, team) = name_and_team;
-            Placement {
-                place,
-                bib,
-                name,
-                team,
-                category,
-                gender,
-                finish_time,
-            }
+        |(place, first, last, city, state, age, gender, gp, time, rank)| Placement {
+            place,
+            first: Borrowed(first),
+            last: Borrowed(last),
+            city,
+            state,
+            age,
+            gender: Borrowed(gender),
+            gp,
+            time,
+            rank,
         },
     )(input)
 }
@@ -89,102 +90,80 @@ fn tr_line(input: &str) -> IResult<&str, ()> {
     value(
         (),
         tuple((
-            multispace0,
-            tag("<tr class=\""),
-            take_until_and_consume("\""),
-            tag(">\r\n"),
+            take_until_and_consume("<tr role=\"row\""),
+            take_until_and_consume(">"),
         )),
     )(input)
 }
 
 fn place(input: &str) -> IResult<&str, u16> {
-    map_res(inside_td("r-place"), |digits: &str| digits.parse())(input)
+    map_res(inside_td("list_place"), |digits: &str| digits.parse())(input)
 }
 
-#[allow(clippy::needless_lifetimes)]
-fn inside_td<'a>(class: &'a str) -> impl FnMut(&'a str) -> IResult<&str, &str> {
-    preceded(
-        tuple((multispace0, tag("<td class='"), tag(class), tag("'>"))),
-        take_until_and_consume("</td>"),
-    )
+fn first(input: &str) -> IResult<&str, &str> {
+    inside_td("list_firstname")(input)
 }
 
-fn bib(input: &str) -> IResult<&str, Option<Cow<str>>> {
-    map(optional_inside_td("r-bibnumber"), |bib| match bib {
-        Some(ref string) if string == "<span class=\'no-diff-hyphen\'>-</span>" => None,
-        _ => bib,
+fn last(input: &str) -> IResult<&str, &str> {
+    inside_td("list_lastname")(input)
+}
+
+fn city(input: &str) -> IResult<&str, Option<Cow<str>>> {
+    optional_inside_td("list_city")(input)
+}
+
+fn state(input: &str) -> IResult<&str, Option<Cow<str>>> {
+    optional_inside_td("list_state")(input)
+}
+
+fn age(input: &str) -> IResult<&str, NonZeroU8> {
+    map_res(inside_td("list_age"), |digits: &str| digits.parse())(input)
+}
+
+fn gender(input: &str) -> IResult<&str, &str> {
+    inside_td("list_gender")(input)
+}
+
+fn gp(input: &str) -> IResult<&str, u16> {
+    map_res(inside_td("list_gender_place"), |digits: &str| {
+        digits.parse()
     })(input)
 }
 
-#[allow(clippy::needless_lifetimes)]
-fn optional_inside_td<'a>(
-    class: &'a str,
-) -> impl FnMut(&'a str) -> IResult<&str, Option<Cow<str>>> {
-    map(inside_td(class), |value: &str| {
-        let value = value.trim();
+fn time(input: &str) -> IResult<&str, Duration> {
+    map_res(inside_td("list_formattime"), |digits: &str| digits.parse())(input)
+}
 
-        match value {
-            "" => None,
-            _ => Some(html_decoded(value)),
+fn rank(input: &str) -> IResult<&str, f32> {
+    map_res(inside_td("list_runner_rank"), |digits: &str| digits.parse())(input)
+}
+
+// NOTE: inside_td will throw away characters until it gets the td
+// that has the aria-describedby that it wants.  This allows us to
+// discard entire <td>..</td> sequences that we don't care about.
+fn inside_td<'a>(aria: &'a str) -> impl FnMut(&'a str) -> IResult<&str, &str> {
+    let initial_tag = format!("aria-describedby=\"{aria}\">");
+    move |input| {
+        preceded(
+            take_until_and_consume(&initial_tag[..]),
+            take_until_and_consume("</td>"),
+        )(input)
+    }
+}
+
+#[allow(clippy::needless_lifetimes)]
+fn optional_inside_td<'a>(aria: &'a str) -> impl FnMut(&'a str) -> IResult<&str, Option<Cow<str>>> {
+    map(inside_td(aria), |value: &str| {
+        let value = value.trim();
+        if value.is_empty() {
+            None
+        } else {
+            Some(Borrowed(value))
         }
     })
 }
 
-fn name_and_team(input: &str) -> IResult<&str, (Cow<str>, Option<Cow<str>>)> {
-    map_parser(inside_td("r-racername"), inner_name_and_team)(input)
-}
-
-fn inner_name_and_team(input: &str) -> IResult<&str, (Cow<str>, Option<Cow<str>>)> {
-    map(
-        tuple((
-            alt((take_until("<span class=\'team-name\'>"), rest)),
-            opt(team),
-        )),
-        |(name, team)| {
-            if let Some(team) = team {
-                if team.trim().is_empty() {
-                    (html_decoded(name), None)
-                } else {
-                    (html_decoded(name), Some(team))
-                }
-            } else {
-                (html_decoded(name), team)
-            }
-        },
-    )(input)
-}
-
-fn team(input: &str) -> IResult<&str, Cow<str>> {
-    map(
-        preceded(
-            tag("<span class='team-name'>"),
-            take_until_and_consume("</span>"),
-        ),
-        html_decoded,
-    )(input)
-}
-
-fn html_decoded(string: &str) -> Cow<str> {
-    if let Ok(decoded_string) = htmlescape::decode_html(string) {
-        if *string != decoded_string {
-            return decoded_string.into();
-        }
-    }
-    string.into()
-}
-
-fn category(input: &str) -> IResult<&str, Option<Cow<str>>> {
-    optional_inside_td("r-category")(input)
-}
-
-fn gender(input: &str) -> IResult<&str, Option<Cow<str>>> {
-    optional_inside_td("r-gender")(input)
-}
-
-fn finish_time(input: &str) -> IResult<&str, &str> {
-    inside_td("r-finish-time")(input)
-}
-
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -211,3 +190,4 @@ mod tests {
         println!("placement = {:?}", placement);
     }
 }
+*/
