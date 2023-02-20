@@ -36,14 +36,14 @@ impl<'a> Placement<'a> {
     #[allow(dead_code)]
     pub fn body_from(uri: &str) -> Option<String> {
         if uri.starts_with("http://ccrtiming.com/events-results/") {
-            super::body_from(&uri)
+            super::body_from(uri)
         } else {
             None
         }
     }
 
     pub fn soloist_names_and_times(input: &str) -> Option<Vec<(Cow<str>, Duration)>> {
-        Results::results(input).map(|results| {
+        Results::new(input).map(|results| {
             results
                 .soloists
                 .iter()
@@ -86,7 +86,7 @@ pub struct Results<'a> {
 }
 
 impl<'a> Results<'a> {
-    pub fn results(contents: &'a str) -> Option<Self> {
+    pub fn new(contents: &'a str) -> Option<Self> {
         match results(contents) {
             Ok((_, results)) => Some(results),
             Err(_) => None,
@@ -285,11 +285,10 @@ fn placement<'a>(
             category_column,
         )| {
             let total = total.unwrap();
-            let category;
-            match header_category {
-                Some(value) => category = value,
-                _ => category = &category_column.expect("no category anywhere"),
-            }
+            let category = match header_category {
+                Some(value) => value,
+                _ => category_column.expect("no category anywhere"),
+            };
             Placement {
                 category,
                 category_place,

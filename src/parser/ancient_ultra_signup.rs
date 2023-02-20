@@ -14,6 +14,7 @@ pub enum Status {
 // This is what we're given.  It's close to what we want, but it has some
 // fields we don't understand and also has inconsistent use of snake-case
 // and time is a string.
+#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 struct PlacementJson {
     age: u8,             // 30
@@ -60,7 +61,7 @@ pub struct Placement {
 impl Placement {
     pub fn results(contents: &str) -> Option<Vec<Self>> {
         let json: Result<Vec<PlacementJson>, serde_json::error::Error> =
-            serde_json::from_str(&contents);
+            serde_json::from_str(contents);
         match json {
             Ok(json) => Some(json.into_iter().map(Self::from).collect()),
             Err(_) => None,

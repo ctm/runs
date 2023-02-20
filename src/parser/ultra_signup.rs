@@ -5,6 +5,7 @@ use {
     std::{borrow::Cow, num::NonZeroU8},
 };
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 struct Placement {
     place: u16,
@@ -29,6 +30,7 @@ enum Status {
     UnofficialFinish = 6, // or perhaps that should be 4?
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 struct StatusWithCount {
     status: Status,
@@ -40,7 +42,7 @@ pub struct StatusesWithPlacements(Vec<(StatusWithCount, Vec<Placement>)>);
 
 impl StatusesWithPlacements {
     fn results(contents: &str) -> Option<Self> {
-        serde_json::from_str(&contents).ok()
+        serde_json::from_str(contents).ok()
     }
 
     pub fn names_and_times(input: &str) -> Option<Vec<(Cow<str>, Duration)>> {

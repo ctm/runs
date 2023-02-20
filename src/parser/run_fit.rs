@@ -59,13 +59,13 @@ impl<'a> Placement<'a> {
     #[allow(dead_code)]
     pub fn body_from(uri: &str) -> Option<String> {
         if uri.contains("://irunfit.org/results/") {
-            super::body_from(&uri)
+            super::body_from(uri)
         } else {
             None
         }
     }
 
-    pub fn results<'b>(contents: &'b str) -> Option<Vec<Placement<'b>>> {
+    pub fn results(contents: &str) -> Option<Vec<Placement>> {
         match results(contents) {
             Ok((_, results)) => Some(results),
             Err(_) => None,

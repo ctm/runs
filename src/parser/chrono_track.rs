@@ -1,13 +1,14 @@
 use {
     crate::parser,
     digital_duration_nom::duration::Duration,
-    serde::{Deserialize, Deserializer},
+    serde::Deserialize,
     std::{
         borrow::Cow,
         num::{NonZeroU16, NonZeroU8},
     },
 };
 
+#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 pub struct Placement {
     rank: NonZeroU16,
@@ -31,7 +32,7 @@ impl Placement {
         contents
             .trim()
             .split('\n')
-            .map(|s| serde_json::from_str::<Vec<_>>(s))
+            .map(serde_json::from_str::<Vec<_>>)
             .collect::<Result<Vec<_>, _>>()
             .ok()
             .map(|v| v.into_iter().flatten().collect())

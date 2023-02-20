@@ -28,20 +28,20 @@ impl<'a> Placement<'a> {
     #[allow(dead_code)]
     pub fn body_from(uri: &str) -> Option<String> {
         if uri.starts_with("https://www.webscorer.com/race?raceid=") {
-            super::body_from(&uri)
+            super::body_from(uri)
         } else {
             None
         }
     }
 
-    pub fn results<'b>(contents: &'b str) -> Option<Vec<Placement<'b>>> {
+    pub fn results(contents: &str) -> Option<Vec<Placement>> {
         match results(contents) {
             Ok((_, results)) => Some(results),
             Err(_) => None,
         }
     }
 
-    pub fn names_and_times<'b>(input: &'b str) -> Option<Vec<(Cow<'b, str>, Duration)>> {
+    pub fn names_and_times(input: &str) -> Option<Vec<(Cow<str>, Duration)>> {
         Self::results(input).map(|results| {
             results
                 .into_iter()
@@ -154,12 +154,12 @@ fn inner_name_and_team(input: &str) -> IResult<&str, (Cow<str>, Option<Cow<str>>
         |(name, team)| {
             if let Some(team) = team {
                 if team.trim().is_empty() {
-                    (html_decoded(&name), None)
+                    (html_decoded(name), None)
                 } else {
-                    (html_decoded(&name), Some(team))
+                    (html_decoded(name), Some(team))
                 }
             } else {
-                (html_decoded(&name), team)
+                (html_decoded(name), team)
             }
         },
     )(input)

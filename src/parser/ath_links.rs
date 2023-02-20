@@ -8,6 +8,7 @@ use {
     },
 };
 
+#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 pub struct Placement {
     name: String,
@@ -29,7 +30,7 @@ impl Placement {
         contents
             .trim()
             .split('\n')
-            .map(|s| serde_json::from_str::<Vec<_>>(s))
+            .map(serde_json::from_str::<Vec<_>>)
             .collect::<Result<Vec<_>, _>>()
             .ok()
             .map(|v| v.into_iter().flatten().collect())

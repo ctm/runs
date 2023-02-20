@@ -58,7 +58,7 @@ impl<'a> Placement<'a> {
         }
     }
 
-    pub fn results<'b>(contents: &'b str) -> Option<Vec<Placement<'b>>> {
+    pub fn results(contents: &str) -> Option<Vec<Placement>> {
         match results(contents) {
             Ok((_, results)) => Some(results),
             Err(_) => None,
