@@ -78,23 +78,7 @@ fn name(input: &str) -> IResult<&str, Cow<str>> {
 
 fn time(input: &str) -> IResult<&str, Duration> {
     // map_res(inside_td("time"), |digits: &str| digits.parse())(input)
-    map_res(inside_td("time"), |digits: &str| {
-        // The following few lines are a hack that can cause a panic
-        // if we're given a file that has a multi-byte Unicode final
-        // character in time.  It's needed because right now
-        // digital-duration-nom only supports a single digit after the
-        // decimal point and the file we're trying to parse has
-        // exactly two (I believe).
-        //
-        // A better solution is to fix digital0-duration-nom.
-        let len = digits.len();
-        let digits = if len < 4 {
-            digits
-        } else {
-            &digits[0..digits.len() - 1]
-        };
-        digits.parse()
-    })(input)
+    map_res(inside_td("time"), |digits: &str| digits.parse())(input)
 }
 
 fn inside_td<'a, T: From<&'a str>>(class: &'a str) -> impl FnMut(&'a str) -> IResult<&str, T> + 'a {
