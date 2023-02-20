@@ -162,32 +162,3 @@ fn optional_inside_td<'a>(aria: &'a str) -> impl FnMut(&'a str) -> IResult<&str,
         }
     })
 }
-
-/*
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tr_line() {
-        let line = "        <tr class=\"rowBg-mod0\">\r\n";
-
-        assert_eq!((), tr_line(line).unwrap().1);
-    }
-
-    #[test]
-    fn test_place() {
-        let line = "            <td class='r-place'>1</td><td class='r-bibnumber'><span class='no-diff-hyphen'>-</span></td><td class='r-racername'>deadhead<span class='team-name'></span></td><td class='r-category'></td><td class='r-gender'>M</td>\r\n";
-
-        assert_eq!(1, place(line).unwrap().1);
-    }
-
-    #[test]
-    fn test_placement() {
-        let lines = "        <tr class=\"rowBg-mod0\">\r\n            <td class='r-place'>1</td><td class='r-bibnumber'><span class='no-diff-hyphen'>-</span></td><td class='r-racername'>deadhead<span class='team-name'></span></td><td class='r-category'></td><td class='r-gender'>M</td>\r\n            \r\n            <td class='r-finish-time'>18:58.1</td><td class='r-difference'><span class='sel_ddDiffCol sel-D tabHide'><span class='no-diff-hyphen'>-</span></span><span class='sel_ddDiffCol sel-P tabHide'><span class='no-percent-hyphen'>-</span></span><span class='sel_ddDiffCol sel-WP tabHide'>100%</span><span class='sel_ddDiffCol sel-AP tabHide'>21.86%</span><span class='sel_ddDiffCol sel-MP tabHide'>22.24%</span></td>\r\n        </tr>\r\n";
-
-        let placement = placement(lines).unwrap().1;
-        println!("placement = {:?}", placement);
-    }
-}
-*/
