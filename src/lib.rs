@@ -3,8 +3,8 @@ mod parser;
 
 use {
     crate::parser::{
-        ancient_ultra_signup, ath_links, ccr_timing, chrono_track, run_fit, runsignup, taos,
-        ultra_signup, ultra_signup_mhtml, web_scorer,
+        ancient_ultra_signup, ath_links, ccr_timing, chrono_track, run_fit, runsignup,
+        runsignup_mhtml, taos, ultra_signup, ultra_signup_mhtml, web_scorer,
     },
     anyhow::{Error, Result},
     digital_duration_nom::duration::Duration,
@@ -37,6 +37,7 @@ pub fn summarize(config: &Config) -> Result<()> {
         taos::Placement::names_and_times,
         ancient_ultra_signup::Placement::names_and_times,
         ultra_signup_mhtml::Placement::names_and_times,
+        runsignup_mhtml::Placement::names_and_times,
     ];
 
     for (i, source) in config.results.iter().enumerate() {

@@ -4,6 +4,7 @@ pub mod ccr_timing;
 pub mod chrono_track;
 pub mod run_fit;
 pub mod runsignup;
+pub mod runsignup_mhtml;
 pub mod taos;
 pub mod ultra_signup;
 pub mod ultra_signup_mhtml;
