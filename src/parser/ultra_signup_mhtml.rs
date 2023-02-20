@@ -73,12 +73,12 @@ fn placement(input: &str) -> IResult<&str, Placement> {
         )),
         |(place, first, last, city, state, age, gender, gp, time, rank)| Placement {
             place,
-            first: Borrowed(first),
-            last: Borrowed(last),
+            first,
+            last,
             city,
             state,
             age,
-            gender: Borrowed(gender),
+            gender,
             gp,
             time,
             rank,
@@ -100,11 +100,11 @@ fn place(input: &str) -> IResult<&str, u16> {
     map_res(inside_td("list_place"), |digits: &str| digits.parse())(input)
 }
 
-fn first(input: &str) -> IResult<&str, &str> {
+fn first(input: &str) -> IResult<&str, Cow<str>> {
     inside_td("list_firstname")(input)
 }
 
-fn last(input: &str) -> IResult<&str, &str> {
+fn last(input: &str) -> IResult<&str, Cow<str>> {
     inside_td("list_lastname")(input)
 }
 
@@ -120,7 +120,7 @@ fn age(input: &str) -> IResult<&str, NonZeroU8> {
     map_res(inside_td("list_age"), |digits: &str| digits.parse())(input)
 }
 
-fn gender(input: &str) -> IResult<&str, &str> {
+fn gender(input: &str) -> IResult<&str, Cow<str>> {
     inside_td("list_gender")(input)
 }
 
@@ -141,12 +141,14 @@ fn rank(input: &str) -> IResult<&str, f32> {
 // NOTE: inside_td will throw away characters until it gets the td
 // that has the aria-describedby that it wants.  This allows us to
 // discard entire <td>..</td> sequences that we don't care about.
-fn inside_td<'a>(aria: &'a str) -> impl FnMut(&'a str) -> IResult<&str, &str> {
+fn inside_td<'a, T: From<&'a str>>(aria: &'a str) -> impl FnMut(&'a str) -> IResult<&str, T> + 'a {
     let initial_tag = format!("aria-describedby=\"{aria}\">");
     move |input| {
         preceded(
             take_until_and_consume(&initial_tag[..]),
-            take_until_and_consume("</td>"),
+            map_res(take_until_and_consume("</td>"), |s: &str| {
+                Ok::<_, ()>(s.into())
+            }),
         )(input)
     }
 }
