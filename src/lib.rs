@@ -22,23 +22,21 @@ use {
     structopt::StructOpt,
 };
 
-type Parser = &'static dyn Fn(&str) -> Option<Vec<(Cow<str>, Duration)>>;
-
 pub fn summarize(config: &Config) -> Result<()> {
     let mut h: HashMap<String, Vec<Option<Duration>>> = HashMap::new();
     let n = config.results.len();
 
-    let parsers = vec![
-        &ultra_signup::StatusesWithPlacements::names_and_times as Parser,
-        &ccr_timing::Placement::soloist_names_and_times as Parser,
-        &web_scorer::Placement::names_and_times as Parser,
-        &run_fit::Placement::names_and_times as Parser,
-        &runsignup::Placement::names_and_times as Parser,
-        &ath_links::Placement::names_and_times as Parser,
-        &chrono_track::Placement::names_and_times as Parser,
-        &taos::Placement::names_and_times as Parser,
-        &ancient_ultra_signup::Placement::names_and_times as Parser,
-        &ultra_signup_mhtml::Placement::names_and_times as Parser,
+    let parsers = [
+        ultra_signup::StatusesWithPlacements::names_and_times,
+        ccr_timing::Placement::soloist_names_and_times,
+        web_scorer::Placement::names_and_times,
+        run_fit::Placement::names_and_times,
+        runsignup::Placement::names_and_times,
+        ath_links::Placement::names_and_times,
+        chrono_track::Placement::names_and_times,
+        taos::Placement::names_and_times,
+        ancient_ultra_signup::Placement::names_and_times,
+        ultra_signup_mhtml::Placement::names_and_times,
     ];
 
     for (i, source) in config.results.iter().enumerate() {
