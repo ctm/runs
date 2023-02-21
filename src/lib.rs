@@ -1,3 +1,4 @@
+mod hashes;
 mod names;
 mod parser;
 

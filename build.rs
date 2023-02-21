@@ -14,7 +14,7 @@ fn main() {
     let path = Path::new(&env::var("OUT_DIR").unwrap()).join("codegen.rs");
     let mut file = BufWriter::new(File::create(path).unwrap());
 
-    writeln!(&mut file, "#[allow(clippy::unreadable_literal)]\nstatic ALIASES: phf::Map<&'static str, &'static str> = {};",
+    writeln!(&mut file, "#[allow(clippy::unreadable_literal)]\npub(crate) static ALIASES: phf::Map<&'static str, &'static str> = {};",
     phf_codegen::Map::new()
         .entry("Rodrigo Romeradelafuente", "\"Rodrigo Romera\"")
         .entry("Megan Devan", "\"Rae Devan\"")
