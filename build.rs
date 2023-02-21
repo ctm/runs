@@ -32,4 +32,18 @@ fn main() {
         .entry("Matthew Swanson", "\"Matt Swanson\"")
         .entry("Jennifer Galasso", "\"Jenny Galasso\"")
         .build()).unwrap();
+
+    writeln!(&mut file, "use crate::ultra_signup_mhtml::Field::{{self,*}};\n#[allow(clippy::unreadable_literal)]\npub(crate) static ARIA_FIELDS: phf::Map<&'static str, Field> = {};",
+    phf_codegen::Map::new()
+        .entry("place", "Place")
+        .entry("firstname", "First")
+        .entry("lastname", "Last")
+        .entry("city", "City")
+        .entry("state", "State")
+        .entry("age", "Age")
+        .entry("gender", "Gender")
+        .entry("gender_place", "Gp")
+        .entry("formattime", "Time")
+        .entry("runner_rank", "Rank")
+        .build()).unwrap();
 }

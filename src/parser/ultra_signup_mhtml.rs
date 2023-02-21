@@ -1,77 +1,125 @@
-// NOTE: this started out as the web_scorer HTML scraper, because that
-// one handles tr elements nicely.  However, to make this more like
-// the other UltraSignup scrapers, I'll need to take the various
-// statuses into account, which is more work.
+// Using ARIA_FIELDS via phf is a lose.  I should just have used a
+// match statement, because then the compiler is free to construct a
+// perfect hash or use a linear search or whatever it thinks is
+// fastest.
 
 use {
-    crate::parser::take_until_and_consume,
+    crate::hashes::ARIA_FIELDS,
     digital_duration_nom::duration::Duration,
-    nom::{
-        combinator::{map, map_res, value},
-        multi::many1,
-        sequence::{preceded, terminated, tuple},
-        IResult,
-    },
-    std::{
-        borrow::Cow::{self, Borrowed},
-        num::NonZeroU8,
-    },
+    scraper::{ElementRef, Html, Selector},
+    selectors::attr::CaseSensitivity::AsciiCaseInsensitive,
+    std::{borrow::Cow, collections::HashMap, fmt::Debug, mem, num::NonZeroU8, str::FromStr},
 };
 
 #[allow(dead_code)]
 #[derive(Debug)]
-pub(crate) struct Placement<'a> {
+pub(crate) struct Placement {
     place: u16,
-    first: Cow<'a, str>,
-    last: Cow<'a, str>,
-    city: Option<Cow<'a, str>>,
-    state: Option<Cow<'a, str>>,
+    first: String,
+    last: String,
+    city: Option<String>,
+    state: Option<String>,
     age: NonZeroU8,
-    gender: Cow<'a, str>,
+    gender: String,
     gp: u16,
     time: Duration,
     rank: f32,
 }
 
-impl<'a> Placement<'a> {
-    fn results(contents: &str) -> Option<Vec<Placement>> {
-        results(contents).ok().map(|(_, results)| results)
-    }
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub(crate) enum Field {
+    Place,
+    First,
+    Last,
+    City,
+    State,
+    Age,
+    Gender,
+    Gp,
+    Time,
+    Rank,
+}
 
-    pub fn names_and_times(input: &str) -> Option<Vec<(Cow<str>, Duration)>> {
-        Self::results(input).map(|results| {
-            results
-                .into_iter()
-                .map(|placement| {
-                    (
-                        format!("{} {}", placement.first, placement.last).into(),
-                        placement.time,
-                    )
-                })
-                .collect()
+fn get_and_parse<T: FromStr>(
+    values: &mut HashMap<Field, String>,
+    field: Field,
+    label: &str,
+) -> Option<T>
+where
+    <T as FromStr>::Err: Debug,
+{
+    values
+        .get(&field)
+        .or_else(|| {
+            eprintln!("no {label} in {values:?}");
+            None
         })
-    }
+        .and_then(|p| {
+            p.parse()
+                .map_err(|e| {
+                    eprintln!("Can't convert {label}: {e:?}, values: {values:?}");
+                    e
+                })
+                .ok()
+        })
 }
 
-fn results(input: &str) -> IResult<&str, Vec<Placement>> {
-    preceded(take_until_and_consume("><tbody>"), many1(placement))(input)
+fn remove(values: &mut HashMap<Field, String>, field: Field, label: &str) -> Option<String> {
+    values.remove(&field).or_else(|| {
+        eprintln!("no {label} in {values:?}");
+        None
+    })
 }
 
-fn placement(input: &str) -> IResult<&str, Placement> {
-    map(
-        tuple((
-            preceded(tr_line, place),
-            first,
-            last,
-            city,
-            state,
-            age,
-            gender,
-            gp,
-            time,
-            terminated(rank, take_until_and_consume("</tr>")),
-        )),
-        |(place, first, last, city, state, age, gender, gp, time, rank)| Placement {
+impl Placement {
+    fn from_list_result<'a>(tds: impl Iterator<Item = ElementRef<'a>>) -> Option<Self> {
+        use Field::*;
+
+        let mut values = HashMap::new();
+        for td in tds {
+            if let Some(key) = td.value().attr("aria-describedby") {
+                if let Some(key) = key.strip_prefix("list_") {
+                    if let Some(field) = ARIA_FIELDS.get(key) {
+                        let mut value = String::new();
+                        value.extend(td.text());
+                        values.insert(*field, value);
+                    }
+                }
+            }
+        }
+
+        let place = get_and_parse(&mut values, Place, "place")?;
+        let age = get_and_parse(&mut values, Age, "age")?;
+        let gp = get_and_parse(&mut values, Gp, "gender place")?;
+        let rank = get_and_parse(&mut values, Rank, "rank")?;
+
+        // DNF and DNS may have blank times.  Elsewhere, they have 0
+        // times.  In theory, DNF and DNS have 0 for both place and
+        // gp, so if we see that, we give them a really large finish
+        // time, rather than zero so that if the results somehow
+        // sneaks through a filter and is summed into a valid number,
+        // the result shows up better.
+
+        let time = if place == 0 && gp == 0 {
+            Duration::new(9_999_999, 0)
+        } else {
+            get_and_parse(&mut values, Time, "time")?
+        };
+
+        // We remove from least specific to most specific, since our
+        // error messages dump values.  The error messages are just
+        // there to help if we're parsing a file and getting
+        // surprising results, so the fact that we're removing some
+        // values before printing the error message is not that big of
+        // a deal.
+
+        let state = values.remove(&State);
+        let city = values.remove(&City);
+        let gender = remove(&mut values, Gender, "gender")?;
+        let first = remove(&mut values, First, "first name")?;
+        let last = remove(&mut values, Last, "last name")?;
+
+        Some(Self {
             place,
             first,
             last,
@@ -82,85 +130,91 @@ fn placement(input: &str) -> IResult<&str, Placement> {
             gp,
             time,
             rank,
-        },
-    )(input)
-}
-
-fn tr_line(input: &str) -> IResult<&str, ()> {
-    value(
-        (),
-        tuple((
-            take_until_and_consume("<tr role=\"row\""),
-            take_until_and_consume(">"),
-        )),
-    )(input)
-}
-
-fn place(input: &str) -> IResult<&str, u16> {
-    map_res(inside_td("list_place"), |digits: &str| digits.parse())(input)
-}
-
-fn first(input: &str) -> IResult<&str, Cow<str>> {
-    inside_td("list_firstname")(input)
-}
-
-fn last(input: &str) -> IResult<&str, Cow<str>> {
-    inside_td("list_lastname")(input)
-}
-
-fn city(input: &str) -> IResult<&str, Option<Cow<str>>> {
-    optional_inside_td("list_city")(input)
-}
-
-fn state(input: &str) -> IResult<&str, Option<Cow<str>>> {
-    optional_inside_td("list_state")(input)
-}
-
-fn age(input: &str) -> IResult<&str, NonZeroU8> {
-    map_res(inside_td("list_age"), |digits: &str| digits.parse())(input)
-}
-
-fn gender(input: &str) -> IResult<&str, Cow<str>> {
-    inside_td("list_gender")(input)
-}
-
-fn gp(input: &str) -> IResult<&str, u16> {
-    map_res(inside_td("list_gender_place"), |digits: &str| {
-        digits.parse()
-    })(input)
-}
-
-fn time(input: &str) -> IResult<&str, Duration> {
-    map_res(inside_td("list_formattime"), |digits: &str| digits.parse())(input)
-}
-
-fn rank(input: &str) -> IResult<&str, f32> {
-    map_res(inside_td("list_runner_rank"), |digits: &str| digits.parse())(input)
-}
-
-// NOTE: inside_td will throw away characters until it gets the td
-// that has the aria-describedby that it wants.  This allows us to
-// discard entire <td>..</td> sequences that we don't care about.
-fn inside_td<'a, T: From<&'a str>>(aria: &'a str) -> impl FnMut(&'a str) -> IResult<&str, T> + 'a {
-    let initial_tag = format!("aria-describedby=\"{aria}\">");
-    move |input| {
-        preceded(
-            take_until_and_consume(&initial_tag[..]),
-            map_res(take_until_and_consume("</td>"), |s: &str| {
-                Ok::<_, ()>(s.into())
-            }),
-        )(input)
+        })
     }
 }
 
-#[allow(clippy::needless_lifetimes)]
-fn optional_inside_td<'a>(aria: &'a str) -> impl FnMut(&'a str) -> IResult<&str, Option<Cow<str>>> {
-    map(inside_td(aria), |value: &str| {
-        let value = value.trim();
-        if value.is_empty() {
-            None
-        } else {
-            Some(Borrowed(value))
+#[allow(dead_code)]
+#[derive(Debug)]
+struct StatusWithCount {
+    status: String,
+    count: u16,
+}
+
+#[derive(Debug)]
+pub struct StatusesWithPlacements(Vec<(StatusWithCount, Vec<Placement>)>);
+
+impl StatusesWithPlacements {
+    fn results(contents: &str) -> Option<Self> {
+        let mut results = None;
+        let mut placements = None;
+
+        let tbody = Selector::parse("tbody").unwrap();
+        let tr = Selector::parse("tr").unwrap();
+        let td = Selector::parse("td").unwrap();
+        let document = Html::parse_document(contents);
+
+        for body in document.select(&tbody) {
+            for tr in body.select(&tr) {
+                if tr.value().has_class("listghead_0", AsciiCaseInsensitive) {
+                    let mut s = String::new();
+                    s.extend(tr.text());
+                    let pieces = s.split(" - ").collect::<Vec<_>>();
+                    if pieces.len() == 2 {
+                        if let Ok(count) = pieces[1].parse::<u16>() {
+                            let swc = StatusWithCount {
+                                status: pieces[0].to_string(),
+                                count,
+                            };
+                            match results.as_mut() {
+                                None => {
+                                    placements = Some(vec![]);
+                                    results = Some(vec![(swc, vec![])])
+                                }
+                                Some(results) => {
+                                    if let Some(mut placements) = placements.replace(vec![]) {
+                                        if let Some(current) = results.last_mut() {
+                                            mem::swap(&mut placements, &mut current.1);
+                                            results.push((swc, placements));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else if let Some(placements) = placements.as_mut() {
+                    let mut tds = tr.select(&td);
+                    if let Some(td) = tds.next() {
+                        if td.value().attr("aria-describedby") == Some("list_results") {
+                            if let Some(placement) = Placement::from_list_result(tds) {
+                                placements.push(placement);
+                            }
+                        }
+                    }
+                }
+            }
         }
-    })
+        if let Some(results) = results.as_mut() {
+            if let Some(result) = results.last_mut() {
+                if let Some(placements) = placements {
+                    result.1 = placements;
+                }
+            }
+        }
+        results.map(Self)
+    }
+
+    pub fn names_and_times(input: &str) -> Option<Vec<(Cow<str>, Duration)>> {
+        Self::results(input).and_then(|swp| {
+            swp.0
+                .into_iter()
+                .find(|(StatusWithCount { status, .. }, _)| status == "Finishers")
+                .map(|(_, placements)| {
+                    placements
+                        .into_iter()
+                        .map(|p| (Cow::from(format!("{} {}", p.first, p.last)), p.time))
+                        .collect::<Vec<_>>()
+                })
+        })
+    }
 }

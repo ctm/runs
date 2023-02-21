@@ -37,7 +37,7 @@ pub fn summarize(config: &Config) -> Result<()> {
         chrono_track::Placement::names_and_times,
         taos::Placement::names_and_times,
         ancient_ultra_signup::Placement::names_and_times,
-        ultra_signup_mhtml::Placement::names_and_times,
+        ultra_signup_mhtml::StatusesWithPlacements::names_and_times,
         runsignup_mhtml::Placement::names_and_times,
     ];
 
