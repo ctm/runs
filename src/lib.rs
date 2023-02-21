@@ -56,7 +56,13 @@ pub fn summarize(config: &Config) -> Result<()> {
                 file.read_to_end(&mut bytes)?;
 
                 let contents = Message::parse(&bytes)
-                    .and_then(|message| message.body_html(0).map(|body| body.into_owned()))
+                    .and_then(|message| {
+                        if message.from().is_empty() {
+                            None
+                        } else {
+                            message.body_html(0).map(|body| body.into_owned())
+                        }
+                    })
                     .unwrap_or_else(|| String::from_utf8_lossy(&bytes).into());
                 if let Some(names_and_times) = parsers.iter().find_map(|parser| parser(&contents)) {
                     // dump_ian_scores(&names_and_times);
