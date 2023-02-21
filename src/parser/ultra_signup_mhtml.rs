@@ -161,7 +161,7 @@ impl StatusesWithPlacements {
                     s.extend(tr.text());
                     let pieces = s.split(" - ").collect::<Vec<_>>();
                     if pieces.len() == 2 {
-                        if let Ok(count) = pieces[1].parse::<u16>() {
+                        if let Ok(count) = pieces[1].parse() {
                             let swc = StatusWithCount {
                                 status: pieces[0].to_string(),
                                 count,
@@ -213,7 +213,7 @@ impl StatusesWithPlacements {
                     placements
                         .into_iter()
                         .map(|p| (Cow::from(format!("{} {}", p.first, p.last)), p.time))
-                        .collect::<Vec<_>>()
+                        .collect()
                 })
         })
     }
