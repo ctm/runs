@@ -5,7 +5,7 @@ use {
         branch::alt,
         bytes::complete::{tag, take},
         character::complete::multispace0,
-        combinator::{cond, flat_map, map, map_parser, map_res, not, opt, value},
+        combinator::{cond, flat_map, map, map_parser, map_res, not, opt, peek, value},
         multi::{many0, many_m_n},
         sequence::{preceded, terminated, tuple},
         IResult,
@@ -161,21 +161,37 @@ impl<'a> fmt::Display for Results<'a> {
 }
 
 pub fn results(input: &str) -> IResult<&str, Results> {
-    map(
-        tuple((
-            discard_through("solo age groups"),
-            all_category_blocks,
-            discard_through("pairs age groups"),
-            all_category_blocks,
-            discard_through("team age groups"),
-            all_category_blocks,
-        )),
-        |(_, soloists, _, pairs, _, teams)| Results {
-            soloists,
-            pairs,
-            teams,
-        },
-    )(input)
+    alt((
+        map(
+            tuple((
+                discard_through("Solo Age Groups"),
+                all_category_blocks,
+                discard_through("Pairs Age Groups"),
+                all_category_blocks,
+                discard_through(" Age Groups"), // "Teams" from 2014 on, "Team" in 2013
+                all_category_blocks,
+            )),
+            |(_, soloists, _, pairs, _, teams)| Results {
+                soloists,
+                pairs,
+                teams,
+            },
+        ),
+        map(
+            tuple((
+                take_until_and_consume("TOP OVERALL"),
+                discard_through("Male Age Groups"),
+                all_category_blocks,
+            )),
+            |(_, _, soloists)| {
+                Results {
+                    soloists,
+                    pairs: vec![], // no support for pairs or teams (yet?)
+                    teams: vec![],
+                }
+            },
+        ),
+    ))(input)
 }
 
 fn all_category_blocks(input: &str) -> IResult<&str, Vec<Placement>> {
@@ -188,7 +204,7 @@ fn all_category_blocks(input: &str) -> IResult<&str, Vec<Placement>> {
 fn junk_line(input: &str) -> IResult<&str, &str> {
     preceded(
         not(alt((category_or_division_line, arrow_line))),
-        take_until_and_consume("\r\n"),
+        take_until_and_consume("\n"),
     )(input)
 }
 
@@ -200,15 +216,16 @@ fn arrow_line(input: &str) -> IResult<&str, Option<&str>> {
     map(tag("<h3><a name=\""), |_| None)(input)
 }
 
-fn discard_through(name: &str) -> impl FnMut(&str) -> IResult<&str, ()> {
-    let to_find = format!("<h3><a name=\"{}\"", name);
-
+fn discard_through(name: &str) -> impl FnMut(&str) -> IResult<&str, ()> + '_ {
     move |input| {
         value(
             (),
             tuple((
-                take_until_and_consume(&to_find[..]),
-                take_until_and_consume("\r\n"),
+                preceded(
+                    take_until_and_consume("><a name=\""),
+                    take_until_and_consume(name),
+                ),
+                take_until_and_consume("\n"),
             )),
         )(input)
     }
@@ -222,12 +239,21 @@ fn category_block(input: &str) -> IResult<&str, Vec<Placement>> {
 }
 
 fn category_or_division_line(input: &str) -> IResult<&str, Option<&str>> {
-    preceded(opt(tag("<pre>")), alt((category_line, division_line)))(input)
+    preceded(
+        opt(tuple((tag("<pre>"), many0(junk_line)))),
+        alt((category_line, division_line)),
+    )(input)
 }
 
 fn category_line(input: &str) -> IResult<&str, Option<&str>> {
     map(
-        preceded(tag("CATEGORY: "), take_until_and_consume("\r\n")),
+        preceded(
+            opt(tag("CATEGORY: ")),
+            preceded(
+                peek(alt((tag("MALE "), tag("FEMALE ")))),
+                take_until_and_consume("\n"),
+            ),
+        ),
         Some,
     )(input)
 }
@@ -239,7 +265,7 @@ fn category_line(input: &str) -> IResult<&str, Option<&str>> {
 fn division_line(input: &str) -> IResult<&str, Option<&str>> {
     value(
         None,
-        tuple((tag("DIVISION: "), take_until_and_consume("\r\n"))),
+        tuple((tag("DIVISION: "), take_until_and_consume("\n"))),
     )(input)
 }
 
@@ -310,8 +336,8 @@ fn placement<'a>(
     )
 }
 
-fn crlf(input: &str) -> IResult<&str, &str> {
-    tag("\r\n")(input)
+fn crlf(input: &str) -> IResult<&str, (Option<&str>, &str)> {
+    tuple((opt(tag("\r")), tag("\n")))(input)
 }
 
 fn right_justified_five_digit_number(input: &str) -> IResult<&str, u16> {

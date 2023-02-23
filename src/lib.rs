@@ -64,7 +64,14 @@ pub fn summarize(config: &Config) -> Result<()> {
                             message.body_html(0).map(|body| body.into_owned())
                         }
                     })
-                    .unwrap_or_else(|| String::from_utf8_lossy(&bytes).into());
+                    .unwrap_or_else(|| {
+                        let candidate = String::from_utf8_lossy(&bytes);
+                        if candidate.contains("<br/>") {
+                            candidate.replace("<br/>", "\n") // for quad/2012.html
+                        } else {
+                            candidate.into_owned()
+                        }
+                    });
                 if let Some(names_and_times) = parsers.iter().find_map(|parser| parser(&contents)) {
                     // dump_ian_scores(&names_and_times);
                     merge(&mut h, names_and_times, i, n);

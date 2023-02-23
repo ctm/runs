@@ -20,6 +20,7 @@ fn main() {
         .entry("Megan Devan", "\"Rae Devan\"")
         .entry("Tim Shultz", "\"Timothy Shultz\"")
         .entry("deadhead", "\"Clifford Matthews\"")
+        .entry("Cliff Matthews", "\"Clifford Matthews\"")
         .entry("Crystal Andersen", "\"Crystal Anderson\"")
         .entry("Guil Marez", "\"Guill Marez\"")
         .entry("Kim Brooks", "\"Kimberly Brooks\"")
