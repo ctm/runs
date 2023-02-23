@@ -163,13 +163,14 @@ impl<'a> fmt::Display for Results<'a> {
 pub fn results(input: &str) -> IResult<&str, Results> {
     alt((
         map(
+            // 2013 - 2019
             tuple((
                 discard_through("Solo Age Groups"),
-                all_category_blocks,
+                all_category_blocks(21),
                 discard_through("Pairs Age Groups"),
-                all_category_blocks,
+                all_category_blocks(21),
                 discard_through(" Age Groups"), // "Teams" from 2014 on, "Team" in 2013
-                all_category_blocks,
+                all_category_blocks(21),
             )),
             |(_, soloists, _, pairs, _, teams)| Results {
                 soloists,
@@ -178,10 +179,26 @@ pub fn results(input: &str) -> IResult<&str, Results> {
             },
         ),
         map(
+            // 2011, 2012
             tuple((
                 take_until_and_consume("TOP OVERALL"),
                 discard_through("Male Age Groups"),
-                all_category_blocks,
+                all_category_blocks(21),
+            )),
+            |(_, _, soloists)| {
+                Results {
+                    soloists,
+                    pairs: vec![], // no support for pairs or teams (yet?)
+                    teams: vec![],
+                }
+            },
+        ),
+        map(
+            // 2010
+            tuple((
+                take_until_and_consume("OVERALL RESULTS - FEMALE SOLO"), // 2010
+                discard_through("AGE GROUP RESULTS - MALE SOLOS"),
+                all_category_blocks(26),
             )),
             |(_, _, soloists)| {
                 Results {
@@ -194,11 +211,13 @@ pub fn results(input: &str) -> IResult<&str, Results> {
     ))(input)
 }
 
-fn all_category_blocks(input: &str) -> IResult<&str, Vec<Placement>> {
-    map(
-        many0(preceded(many0(junk_line), category_block)),
-        |blocks| blocks.into_iter().flatten().collect(),
-    )(input)
+fn all_category_blocks(name_len: usize) -> impl FnMut(&str) -> IResult<&str, Vec<Placement>> {
+    move |input| {
+        map(
+            many0(preceded(many0(junk_line), category_block(name_len))),
+            |blocks| blocks.into_iter().flatten().collect(),
+        )(input)
+    }
 }
 
 fn junk_line(input: &str) -> IResult<&str, &str> {
@@ -231,11 +250,13 @@ fn discard_through(name: &str) -> impl FnMut(&str) -> IResult<&str, ()> + '_ {
     }
 }
 
-fn category_block(input: &str) -> IResult<&str, Vec<Placement>> {
-    flat_map(
-        terminated(category_or_division_line, many_m_n(2, 2, junk_line)),
-        |category| many0(placement(category)),
-    )(input)
+fn category_block(name_len: usize) -> impl FnMut(&str) -> IResult<&str, Vec<Placement>> {
+    move |input| {
+        flat_map(
+            terminated(category_or_division_line, many_m_n(2, 2, junk_line)),
+            |category| many0(placement(category, name_len)),
+        )(input)
+    }
 }
 
 fn category_or_division_line(input: &str) -> IResult<&str, Option<&str>> {
@@ -248,7 +269,10 @@ fn category_or_division_line(input: &str) -> IResult<&str, Option<&str>> {
 fn category_line(input: &str) -> IResult<&str, Option<&str>> {
     map(
         preceded(
-            opt(tag("CATEGORY: ")),
+            opt(tuple((
+                opt(alt((tag("  <!--mstheme--></font><pre><b>"), tag("<b>")))),
+                tag("CATEGORY: "),
+            ))),
             preceded(
                 peek(alt((tag("MALE "), tag("FEMALE ")))),
                 take_until_and_consume("\n"),
@@ -271,11 +295,13 @@ fn division_line(input: &str) -> IResult<&str, Option<&str>> {
 
 fn placement<'a>(
     header_category: Option<&'a str>,
+    name_len: usize,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Placement<'a>> + 'a {
     map(
         tuple((
+            opt(tag("</b>")),
             terminated(right_justified_five_digit_number, tag(" ")),
-            terminated(name(header_category), tag(" ")),
+            terminated(name(header_category, name_len), tag(" ")),
             terminated(optional_duration, tag(" ")),
             terminated(optional_duration, tag(" ")),
             terminated(optional_duration, tag(" ")),
@@ -294,6 +320,7 @@ fn placement<'a>(
             ),
         )),
         move |(
+            _,
             category_place,
             name,
             bike_up,
@@ -348,11 +375,11 @@ fn upto_fourteen_characters(input: &str) -> IResult<&str, &str> {
     map(take(14usize), |letters: &str| letters.trim_end())(input)
 }
 
-fn name(category: Option<&str>) -> impl FnMut(&str) -> IResult<&str, &str> + '_ {
+fn name(category: Option<&str>, name_len: usize) -> impl FnMut(&str) -> IResult<&str, &str> + '_ {
     move |input| {
         let n: usize = match category {
             None => 25,
-            _ => 21,
+            _ => name_len,
         };
         map(take(n), |letters: &str| letters.trim())(input)
     }
