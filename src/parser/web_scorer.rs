@@ -67,7 +67,13 @@ impl<'a> fmt::Display for Placement<'a> {
 }
 
 fn results(input: &str) -> IResult<&str, Vec<Placement>> {
-    preceded(take_until_and_consume("<tbody>"), many1(placement))(input)
+    map(
+        many1(preceded(
+            take_until_and_consume("<tbody>"),
+            many1(placement),
+        )),
+        |v| v.into_iter().flatten().collect::<Vec<_>>(),
+    )(input)
 }
 
 fn placement(input: &str) -> IResult<&str, Placement> {
