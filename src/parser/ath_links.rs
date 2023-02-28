@@ -17,7 +17,7 @@ pub struct Placement {
     bib: String,
     hometown: String,
     rank: NonZeroU16,
-    gender_rank: NonZeroU16,
+    gender_rank: Option<NonZeroU16>,
     division_rank: NonZeroU16,
     #[serde(deserialize_with = "duration_deserializer")]
     pace: Duration,
