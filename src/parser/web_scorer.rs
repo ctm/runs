@@ -20,6 +20,7 @@ pub struct Placement<'a> {
     pub name: Cow<'a, str>,
     pub team: Option<Cow<'a, str>>,
     pub category: Option<Cow<'a, str>>,
+    pub age: Option<u8>,
     pub gender: Option<Cow<'a, str>>,
     pub finish_time: Duration,
 }
@@ -83,10 +84,11 @@ fn placement(input: &str) -> IResult<&str, Placement> {
             bib,
             name_and_team,
             category,
+            age,
             gender,
             terminated(finish_time, take_until_and_consume("</tr>")),
         )),
-        |(place, bib, name_and_team, category, gender, finish_time)| {
+        |(place, bib, name_and_team, category, age, gender, finish_time)| {
             let finish_time = Duration::from_str(finish_time).unwrap();
             let (name, team) = name_and_team;
             Placement {
@@ -95,6 +97,7 @@ fn placement(input: &str) -> IResult<&str, Placement> {
                 name,
                 team,
                 category,
+                age,
                 gender,
                 finish_time,
             }
@@ -192,6 +195,10 @@ fn html_decoded(string: &str) -> Cow<str> {
 
 fn category(input: &str) -> IResult<&str, Option<Cow<str>>> {
     optional_inside_td("r-category")(input)
+}
+
+fn age(input: &str) -> IResult<&str, Option<u8>> {
+    opt(map_res(inside_td("r-age"), |digits: &str| digits.parse()))(input)
 }
 
 fn gender(input: &str) -> IResult<&str, Option<Cow<str>>> {

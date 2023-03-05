@@ -4,7 +4,7 @@ mod parser;
 
 use {
     crate::parser::{
-        ancient_ultra_signup, ath_links, ccr_timing, chrono_track, run_fit, runsignup,
+        ancient_ultra_signup, ath_links, ccr_timing, chrono_track, race_roster, run_fit, runsignup,
         runsignup_mhtml, taos, ultra_signup, ultra_signup_mhtml, web_scorer,
     },
     anyhow::{Error, Result},
@@ -39,6 +39,7 @@ pub fn summarize(config: &Config) -> Result<()> {
         ancient_ultra_signup::Placement::names_and_times,
         ultra_signup_mhtml::StatusesWithPlacements::names_and_times,
         runsignup_mhtml::Placement::names_and_times,
+        race_roster::Placement::names_and_times,
     ];
 
     for (i, source) in config.results.iter().enumerate() {
