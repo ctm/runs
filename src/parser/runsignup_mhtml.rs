@@ -6,6 +6,7 @@ use {
     crate::parser::take_until_and_consume,
     digital_duration_nom::duration::Duration,
     nom::{
+        bytes::complete::tag,
         combinator::{map, map_parser, map_res},
         multi::many1,
         sequence::{preceded, terminated, tuple},
@@ -20,6 +21,7 @@ pub struct Placement<'a> {
     place: Cow<'a, str>, // Really? Not a u16? We don't use it anyway.
     // bib: String,
     name: Cow<'a, str>,
+    gender: Cow<'a, str>,
     // city: String,
     time: Duration,
     // ...
@@ -49,9 +51,15 @@ fn placement(input: &str) -> IResult<&str, Placement> {
         tuple((
             preceded(tr_line, place),
             name,
+            gender,
             terminated(time, take_until_and_consume("</tr>")),
         )),
-        |(place, name, time)| Placement { place, name, time },
+        |(place, name, gender, time)| Placement {
+            place,
+            name,
+            gender,
+            time,
+        },
     )(input)
 }
 
@@ -73,6 +81,13 @@ fn name(input: &str) -> IResult<&str, Cow<str>> {
             )),
         ),
         |(first, last)| format!("{first} {last}").into(),
+    )(input)
+}
+
+fn gender(input: &str) -> IResult<&str, Cow<str>> {
+    preceded(
+        tag("<td>"),
+        map(take_until_and_consume("</td>"), |s: &str| s.into()),
     )(input)
 }
 
