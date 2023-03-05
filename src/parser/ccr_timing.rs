@@ -1,5 +1,5 @@
 use {
-    crate::parser::take_until_and_consume,
+    crate::{parser::take_until_and_consume, prelude::*},
     digital_duration_nom::duration::Duration,
     nom::{
         branch::alt,
@@ -42,12 +42,12 @@ impl<'a> Placement<'a> {
         }
     }
 
-    pub fn soloist_names_and_times(input: &str) -> Option<Vec<(Cow<str>, Duration)>> {
+    pub fn soloist_names_and_times(input: &str) -> OptionalResults {
         Results::new(input).map(|results| {
             results
                 .soloists
                 .iter()
-                .map(|soloist| (Cow::from(soloist.name), soloist.total))
+                .map(|soloist| (Cow::from(soloist.name), soloist.total, None))
                 .collect()
         })
     }

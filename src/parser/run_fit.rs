@@ -4,7 +4,7 @@
 //       know that software's name.
 
 use {
-    crate::parser::take_until_and_consume,
+    crate::{parser::take_until_and_consume, prelude::*},
     digital_duration_nom::{duration::Duration, option_display::OptionDisplay},
     nom::{
         branch::alt,
@@ -21,25 +21,6 @@ use {
         num::{NonZeroU16, NonZeroU8},
     },
 };
-
-#[derive(Clone, Debug)]
-pub enum MaleOrFemale {
-    Male,
-    Female,
-}
-
-impl Display for MaleOrFemale {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                MaleOrFemale::Male => "M",
-                MaleOrFemale::Female => "F",
-            }
-        )
-    }
-}
 
 #[derive(Debug)]
 pub struct Placement<'a> {
@@ -72,11 +53,17 @@ impl<'a> Placement<'a> {
         }
     }
 
-    pub fn names_and_times(input: &str) -> Option<Vec<(Cow<str>, Duration)>> {
+    pub fn names_and_times(input: &str) -> OptionalResults {
         Self::results(input).map(|results| {
             let mut names_and_times: Vec<_> = results
                 .into_iter()
-                .map(|placement| (Cow::from(placement.name), placement.chip_time))
+                .map(|placement| {
+                    (
+                        Cow::from(placement.name),
+                        placement.chip_time,
+                        placement.gender,
+                    )
+                })
                 .collect();
             names_and_times.sort();
             names_and_times.dedup();

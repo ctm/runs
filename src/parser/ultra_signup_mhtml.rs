@@ -4,7 +4,7 @@
 // fastest.
 
 use {
-    crate::hashes::ARIA_FIELDS,
+    crate::{hashes::ARIA_FIELDS, prelude::*},
     digital_duration_nom::duration::Duration,
     scraper::{ElementRef, Html, Selector},
     selectors::attr::CaseSensitivity::AsciiCaseInsensitive,
@@ -24,6 +24,12 @@ pub(crate) struct Placement {
     gp: u16,
     time: Duration,
     rank: f32,
+}
+
+impl Gender for Placement {
+    fn gender(&self) -> &str {
+        &self.gender[..]
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -204,7 +210,7 @@ impl StatusesWithPlacements {
         results.map(Self)
     }
 
-    pub fn names_and_times(input: &str) -> Option<Vec<(Cow<str>, Duration)>> {
+    pub fn names_and_times(input: &str) -> OptionalResults {
         Self::results(input).and_then(|swp| {
             swp.0
                 .into_iter()
@@ -212,7 +218,13 @@ impl StatusesWithPlacements {
                 .map(|(_, placements)| {
                     placements
                         .into_iter()
-                        .map(|p| (Cow::from(format!("{} {}", p.first, p.last)), p.time))
+                        .map(|p| {
+                            (
+                                Cow::from(format!("{} {}", p.first, p.last)),
+                                p.time,
+                                p.morf(),
+                            )
+                        })
                         .collect()
                 })
         })

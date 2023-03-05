@@ -1,4 +1,5 @@
 use {
+    crate::prelude::*,
     digital_duration_nom::duration::Duration,
     serde::{Deserialize, Deserializer},
     std::borrow::Cow,
@@ -28,11 +29,11 @@ impl Placement {
             .map(|v| v.into_iter().flatten().collect())
     }
 
-    pub fn names_and_times(input: &str) -> Option<Vec<(Cow<str>, Duration)>> {
+    pub fn names_and_times(input: &str) -> OptionalResults {
         Self::results(input).map(|results| {
             results
                 .into_iter()
-                .map(|placement| (Cow::from(placement.name), placement.clock_time))
+                .map(|placement| (Cow::from(placement.name), placement.clock_time, None))
                 .collect()
         })
     }

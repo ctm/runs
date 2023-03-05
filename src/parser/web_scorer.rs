@@ -1,5 +1,5 @@
 use {
-    crate::parser::take_until_and_consume,
+    crate::{parser::take_until_and_consume, prelude::*},
     digital_duration_nom::duration::Duration,
     nom::{
         branch::alt,
@@ -42,11 +42,14 @@ impl<'a> Placement<'a> {
         }
     }
 
-    pub fn names_and_times(input: &str) -> Option<Vec<(Cow<str>, Duration)>> {
+    pub fn names_and_times(input: &str) -> OptionalResults {
         Self::results(input).map(|results| {
             results
                 .into_iter()
-                .map(|placement| (placement.name, placement.finish_time))
+                .map(|placement| {
+                    let morf = placement.morf();
+                    (placement.name, placement.finish_time, morf)
+                })
                 .collect()
         })
     }
@@ -64,6 +67,12 @@ impl<'a> fmt::Display for Placement<'a> {
             "{:3} {:1} {:7.1} {:30}",
             self.place, gender, self.finish_time, &self.name
         )
+    }
+}
+
+impl Gender for Placement<'_> {
+    fn gender(&self) -> &str {
+        self.gender.as_ref().map(|s| s.as_ref()).unwrap_or("")
     }
 }
 

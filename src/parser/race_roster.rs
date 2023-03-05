@@ -1,7 +1,8 @@
 use {
+    crate::prelude::*,
     digital_duration_nom::duration::Duration,
     scraper::{ElementRef, Html, Selector},
-    std::{borrow::Cow, collections::HashMap, fmt::Debug, num::NonZeroU8, str::FromStr},
+    std::{collections::HashMap, fmt::Debug, num::NonZeroU8, str::FromStr},
 };
 
 #[allow(dead_code)]
@@ -32,12 +33,12 @@ const CHIP_TIME: &str = "Chip Time";
 const PLACE: &str = "Overall Place";
 
 impl<'a> Placement<'a> {
-    pub fn names_and_times(input: &str) -> Option<Vec<(Cow<str>, Duration)>> {
+    pub fn names_and_times(input: &str) -> OptionalResults {
         let document = Html::parse_document(input);
         Self::results(&document).map(|results| {
             results
                 .into_iter()
-                .map(|p| (p.name.to_string().into(), p.chip_time))
+                .map(|p| (p.name.to_string().into(), p.chip_time, p.morf()))
                 .collect()
         })
     }
@@ -78,6 +79,12 @@ impl<'a> Placement<'a> {
                 })
             })
             .collect()
+    }
+}
+
+impl Gender for Placement<'_> {
+    fn gender(&self) -> &str {
+        self.gender
     }
 }
 

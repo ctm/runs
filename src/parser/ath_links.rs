@@ -1,5 +1,6 @@
 use {
     super::duration_deserializer,
+    crate::prelude::*,
     digital_duration_nom::duration::Duration,
     serde::Deserialize,
     std::{
@@ -36,12 +37,21 @@ impl Placement {
             .map(|v| v.into_iter().flatten().collect())
     }
 
-    pub fn names_and_times(input: &str) -> Option<Vec<(Cow<str>, Duration)>> {
+    pub fn names_and_times(input: &str) -> OptionalResults {
         Self::results(input).map(|results| {
             results
                 .into_iter()
-                .map(|placement| (Cow::from(placement.name), placement.time))
+                .map(|placement| {
+                    let morf = placement.morf();
+                    (Cow::from(placement.name), placement.time, morf)
+                })
                 .collect()
         })
+    }
+}
+
+impl Gender for Placement {
+    fn gender(&self) -> &str {
+        &self.sex[..]
     }
 }

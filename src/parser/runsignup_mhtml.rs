@@ -3,7 +3,7 @@
 // name, but not the starting tag.
 
 use {
-    crate::parser::take_until_and_consume,
+    crate::{parser::take_until_and_consume, prelude::*},
     digital_duration_nom::duration::Duration,
     nom::{
         bytes::complete::tag,
@@ -32,13 +32,21 @@ impl<'a> Placement<'a> {
         results(contents).ok().map(|(_, results)| results)
     }
 
-    pub fn names_and_times(input: &str) -> Option<Vec<(Cow<str>, Duration)>> {
+    pub fn names_and_times(input: &str) -> OptionalResults {
         Self::results(input).map(|results| {
             results
                 .into_iter()
-                .map(|placement| (placement.name, placement.time))
+                .map(|placement| {
+                    let morf = placement.morf();
+                    (placement.name, placement.time, morf)
+                })
                 .collect()
         })
+    }
+}
+impl Gender for Placement<'_> {
+    fn gender(&self) -> &str {
+        self.gender.as_ref()
     }
 }
 

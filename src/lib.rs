@@ -14,6 +14,7 @@ use {
     std::{
         borrow::Cow,
         collections::HashMap,
+        fmt::{self, Display, Formatter},
         fs::File,
         io::Read,
         path::{Path, PathBuf},
@@ -86,11 +87,11 @@ pub fn summarize(config: &Config) -> Result<()> {
 
 fn merge(
     h: &mut HashMap<String, Vec<Option<Duration>>>,
-    names_and_times: Vec<(Cow<str>, Duration)>,
+    names_and_times: Vec<(Cow<str>, Duration, Option<MaleOrFemale>)>,
     i: usize,
     n: usize,
 ) {
-    for (name, duration) in names_and_times {
+    for (name, duration, _) in names_and_times {
         let name = names::canonical(name);
         match h.get_mut(name.as_ref()) {
             Some(durations) => {
@@ -229,4 +230,48 @@ fn dump_ian_scores(names_and_times: &[(Cow<str>, Duration)]) {
         let time: f64 = time.as_secs() as f64;
         println!("{:>3}: {}", (median / time * 100.0).floor(), name);
     }
+}
+
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum MaleOrFemale {
+    Male,
+    Female,
+}
+
+impl Display for MaleOrFemale {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                MaleOrFemale::Male => "M",
+                MaleOrFemale::Female => "F",
+            }
+        )
+    }
+}
+
+pub(crate) trait Gender {
+    fn gender(&self) -> &str;
+}
+
+pub(crate) trait Morf: Gender {
+    fn morf(&self) -> Option<MaleOrFemale> {
+        use MaleOrFemale::*;
+
+        match self.gender() {
+            "M" | "Male" => Some(Male),
+            "F" | "Female" => Some(Female),
+            "X" | "U" | "" => None,
+            other => panic!("Unknown gender: {}", other),
+        }
+    }
+}
+
+impl<T: Gender> Morf for T {}
+
+pub(crate) type OptionalResults<'a> = Option<Vec<(Cow<'a, str>, Duration, Option<MaleOrFemale>)>>;
+
+pub(crate) mod prelude {
+    pub(crate) use super::{Gender, MaleOrFemale, Morf, OptionalResults};
 }

@@ -1,4 +1,5 @@
 use {
+    crate::prelude::*,
     digital_duration_nom::duration::Duration,
     serde::Deserialize,
     std::{borrow::Cow, str::FromStr},
@@ -68,18 +69,27 @@ impl Placement {
         }
     }
 
-    pub fn names_and_times(input: &str) -> Option<Vec<(Cow<str>, Duration)>> {
+    pub fn names_and_times(input: &str) -> OptionalResults {
         use Status::*;
 
         Self::results(input).map(|results| {
             results
                 .into_iter()
                 .filter_map(|placement| match placement.status {
-                    Finished => Some((Cow::from(placement.name), placement.time)),
+                    Finished => {
+                        let morf = placement.morf();
+                        Some((Cow::from(placement.name), placement.time, morf))
+                    }
                     _ => None,
                 })
                 .collect()
         })
+    }
+}
+
+impl Gender for Placement {
+    fn gender(&self) -> &str {
+        &self.gender[..]
     }
 }
 

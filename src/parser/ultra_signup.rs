@@ -1,5 +1,6 @@
 use {
     super::duration_deserializer,
+    crate::prelude::*,
     digital_duration_nom::duration::Duration,
     serde::Deserialize,
     std::{borrow::Cow, num::NonZeroU8},
@@ -19,6 +20,12 @@ struct Placement {
     #[serde(deserialize_with = "duration_deserializer")]
     time: Duration,
     rank: f32,
+}
+
+impl Gender for Placement {
+    fn gender(&self) -> &str {
+        &self.gender[..]
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -45,7 +52,7 @@ impl StatusesWithPlacements {
         serde_json::from_str(contents).ok()
     }
 
-    pub fn names_and_times(input: &str) -> Option<Vec<(Cow<str>, Duration)>> {
+    pub fn names_and_times(input: &str) -> OptionalResults {
         Self::results(input).and_then(|swp| {
             swp.0
                 .into_iter()
@@ -61,7 +68,13 @@ impl StatusesWithPlacements {
                 .map(|(_, placements)| {
                     placements
                         .into_iter()
-                        .map(|p| (Cow::from(format!("{} {}", p.first, p.last)), p.time))
+                        .map(|p| {
+                            (
+                                Cow::from(format!("{} {}", p.first, p.last)),
+                                p.time,
+                                p.morf(),
+                            )
+                        })
                         .collect::<Vec<_>>()
                 })
         })
