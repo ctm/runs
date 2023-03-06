@@ -6,8 +6,7 @@
 use {
     crate::{hashes::ARIA_FIELDS, prelude::*},
     digital_duration_nom::duration::Duration,
-    scraper::{ElementRef, Html, Selector},
-    selectors::attr::CaseSensitivity::AsciiCaseInsensitive,
+    scraper::{CaseSensitivity::AsciiCaseInsensitive, ElementRef, Html, Selector},
     std::{borrow::Cow, collections::HashMap, fmt::Debug, mem, num::NonZeroU8, str::FromStr},
 };
 

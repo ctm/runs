@@ -10,20 +10,12 @@ phf_codegen = "0.11.1"
 [dependencies]
 nom = "7.1.3"
 serde = { version = "1.0.152", features = ["derive"] }
-serde_json = "1.0.93"
+serde_json = "1.0.94"
 htmlescape = "0.3.1"
 digital-duration-nom = { version = "0.4.0", git = "https://github.com/ctm/digital-duration-nom" }
 reqwest = { version = "0.11.14", features = ["blocking"] }
 structopt = "0.3.26"
 phf = "0.11.1"
 anyhow = "1.0.69"
-mail-parser = { version = "0.8.1", default-features = false }
-scraper = { version = "0.14.0", default-features = false, features = ["deterministic"] }
-
-# Pinning selectors specifically to 0.22 is necessary, because scraper
-# uses selectors and it currently pins to 0.22.  Preferably, I
-# wouldn't add selectors as a dependency here at all, but it appears
-# necessary for me to be able to use the CaseSensitivity enum, which
-# is needed by the has_class method.
-
-selectors = { version = "=0.22.0" }
+mail-parser = { version = "0.8.2", default-features = false }
+scraper = { version = "0.15.0", default-features = false, features = ["deterministic"] }
