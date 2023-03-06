@@ -7,16 +7,18 @@ use {
         ancient_ultra_signup, ath_links, ccr_timing, chrono_track, race_roster, run_fit, runsignup,
         runsignup_mhtml, taos, ultra_signup, ultra_signup_mhtml, web_scorer,
     },
-    anyhow::{Error, Result},
+    anyhow::{bail, Error, Result},
     digital_duration_nom::duration::Duration,
+    itertools::Itertools,
     mail_parser::Message,
     reqwest::Url,
     std::{
         borrow::Cow,
+        cmp::Reverse,
         collections::HashMap,
         fmt::{self, Display, Formatter},
-        fs::File,
-        io::Read,
+        fs::{self, DirEntry, File},
+        io::{self, Read},
         path::{Path, PathBuf},
         str::FromStr,
         string::String,
@@ -25,23 +27,236 @@ use {
 };
 
 pub fn summarize(config: &Config) -> Result<()> {
+    if config.results.len() == 1 {
+        if let Source::File(p) = &config.results[0] {
+            if p.is_dir() {
+                return summarize_scores(p);
+            }
+        }
+    }
+    summarize_total_times(config)
+}
+
+fn summarize_scores(p: &Path) -> Result<()> {
+    let mut entries = fs::read_dir(p)?.peekable();
+
+    match entries.peek() {
+        None => Ok(()),
+        Some(p) => {
+            match p {
+                Err(e) => {
+                    // I don't know how a better way to create an error
+                    // that I can return return here.  e is &io::Error
+                    // and surprisingly, io::Error doesn't implement Clone.
+                    bail!("trouble getting first path: {e:?}")
+                }
+                Ok(p) => {
+                    if p.file_type()?.is_dir() {
+                        summarize_directories(entries)
+                    } else {
+                        summarize_files(entries)
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn summarize_directories(entries: impl Iterator<Item = io::Result<DirEntry>>) -> Result<()> {
+    let (paths, scores) = score_directories(entries)?;
+    let mut scores = scores
+        .into_iter()
+        .map(|(name, scores)| {
+            (
+                name,
+                scores
+                    .iter()
+                    .map(|ScoreInfo { points, .. }| *points)
+                    .sum::<u16>(),
+                scores,
+            )
+        })
+        .collect::<Vec<_>>();
+    scores.sort_by_key(|(_, points, _)| Reverse(*points));
+    let rank_width = scores.len().ilog10() as usize + 1;
+    let mut old_rank = 1;
+    let mut old_points = 0;
+    let mut upcoming_rank = 1;
+    let mut need_nl = false;
+    for (name, points, events) in scores {
+        if need_nl {
+            println!();
+        } else {
+            need_nl = true;
+        }
+        let rank = if points == old_points {
+            old_rank
+        } else {
+            old_points = points;
+            old_rank = upcoming_rank;
+            upcoming_rank
+        };
+        upcoming_rank += 1;
+        println!("{rank:>rank_width$} {points:>4} {name}");
+        for ScoreInfo { points, path_index } in events {
+            println!(
+                "{:rank_width$}  {points:>3}   {}",
+                "",
+                paths_indexed(&paths, path_index)
+            );
+        }
+    }
+    Ok(())
+}
+
+fn paths_indexed(paths: &[PathBuf], index: u8) -> Cow<str> {
+    paths[index as usize].file_stem().unwrap().to_string_lossy()
+}
+
+#[allow(clippy::type_complexity)]
+fn score_directories(
+    entries: impl Iterator<Item = io::Result<DirEntry>>,
+) -> Result<(Vec<PathBuf>, HashMap<String, Vec<ScoreInfo>>)> {
+    let mut paths = vec![];
+    fold_paths(
+        entries,
+        |p| p.read_dir().map_err(|e| e.into()).and_then(score_files),
+        |mut h, (_i, (mut new_paths, scores))| {
+            let offset = paths.len() as u8;
+            paths.append(&mut new_paths);
+            for (name, mut score_info) in scores.into_iter() {
+                let ScoreInfo {
+                    ref mut path_index, ..
+                } = score_info;
+                *path_index += offset;
+                h.entry(name).or_insert_with(Vec::new).push(score_info);
+            }
+            h
+        },
+    )
+    .map(|(_, h)| (paths, h))
+}
+
+#[derive(Debug)]
+struct ScoreInfo {
+    points: u16,
+    path_index: u8,
+}
+
+fn fold_paths<IN, OUT>(
+    entries: impl Iterator<Item = io::Result<DirEntry>>,
+    p_to_in: impl Fn(&Path) -> Result<IN>,
+    f: impl FnMut(HashMap<String, OUT>, (usize, IN)) -> HashMap<String, OUT>,
+) -> Result<(Vec<PathBuf>, HashMap<String, OUT>)> {
+    let mut paths = vec![];
+    let scores = entries
+        .map(|entry| {
+            entry.map_err(|e| e.into()).and_then(|entry| {
+                paths.push(entry.path());
+                p_to_in(paths.last().unwrap())
+            })
+        })
+        .enumerate()
+        .map(|(i, r)| r.map(|v| (i, v)))
+        .fold_ok(HashMap::<String, OUT>::new(), f)?;
+    Ok((paths, scores))
+}
+
+fn score_files(
+    entries: impl Iterator<Item = io::Result<DirEntry>>,
+) -> Result<(Vec<PathBuf>, HashMap<String, ScoreInfo>)> {
+    fold_paths(entries, contents, |mut h, (i, contents)| {
+        if let Some(mut names_and_times) = PARSERS.iter().find_map(|parser| parser(&contents)) {
+            names_and_times.sort_by_key(|&(_, time, _)| time);
+            let mut firsts = [None; 2];
+            for (name, time, morf) in names_and_times {
+                let time = (*time).as_secs();
+                if let Some(morf) = morf {
+                    let morf = morf as usize;
+                    let new_points = match &firsts[morf] {
+                        None => {
+                            firsts[morf] = Some(time);
+                            100
+                        }
+                        Some(first) => (first * 100 / time) as u16,
+                    };
+                    if let Some(ScoreInfo { points, path_index }) = h.get_mut(name.as_ref()) {
+                        if new_points > *points {
+                            *points = new_points;
+                            *path_index = i as u8;
+                        }
+                    } else {
+                        h.insert(
+                            names::canonical(name).into_owned(),
+                            ScoreInfo {
+                                points: new_points,
+                                path_index: i as u8,
+                            },
+                        );
+                    }
+                }
+            }
+        }
+        h
+    })
+}
+
+fn summarize_files(entries: impl Iterator<Item = io::Result<DirEntry>>) -> Result<()> {
+    let (paths, scores) = score_files(entries)?;
+    let mut scores = scores.into_iter().collect::<Vec<_>>();
+
+    scores.sort_by_key(|&(_, ScoreInfo { points, .. })| Reverse(points));
+    let width = scores.iter().map(|(name, ..)| name.len()).max().unwrap();
+    for (name, ScoreInfo { points, path_index }) in scores {
+        println!(
+            "{points:>3}: {name:width$} {:?}",
+            paths_indexed(&paths, path_index)
+        );
+    }
+    Ok(())
+}
+
+static PARSERS: [fn(&str) -> OptionalResults; 12] = [
+    ultra_signup::StatusesWithPlacements::names_and_times,
+    ccr_timing::Placement::soloist_names_and_times,
+    web_scorer::Placement::names_and_times,
+    run_fit::Placement::names_and_times,
+    runsignup::Placement::names_and_times,
+    ath_links::Placement::names_and_times,
+    chrono_track::Placement::names_and_times,
+    taos::Placement::names_and_times,
+    ancient_ultra_signup::Placement::names_and_times,
+    ultra_signup_mhtml::StatusesWithPlacements::names_and_times,
+    runsignup_mhtml::Placement::names_and_times,
+    race_roster::Placement::names_and_times,
+];
+
+fn contents(p: &Path) -> Result<String> {
+    let mut file = File::open(p)?;
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes)?;
+
+    Ok(Message::parse(&bytes)
+        .and_then(|message| {
+            if message.from().is_empty() {
+                None
+            } else {
+                message.body_html(0).map(|body| body.into_owned())
+            }
+        })
+        .unwrap_or_else(|| {
+            let candidate = String::from_utf8_lossy(&bytes);
+            if candidate.contains("<br/>") {
+                candidate.replace("<br/>", "\n") // for quad/2012.html
+            } else {
+                candidate.into_owned()
+            }
+        }))
+}
+
+fn summarize_total_times(config: &Config) -> Result<()> {
     let mut h: HashMap<String, Vec<Option<Duration>>> = HashMap::new();
     let n = config.results.len();
-
-    let parsers = [
-        ultra_signup::StatusesWithPlacements::names_and_times,
-        ccr_timing::Placement::soloist_names_and_times,
-        web_scorer::Placement::names_and_times,
-        run_fit::Placement::names_and_times,
-        runsignup::Placement::names_and_times,
-        ath_links::Placement::names_and_times,
-        chrono_track::Placement::names_and_times,
-        taos::Placement::names_and_times,
-        ancient_ultra_signup::Placement::names_and_times,
-        ultra_signup_mhtml::StatusesWithPlacements::names_and_times,
-        runsignup_mhtml::Placement::names_and_times,
-        race_roster::Placement::names_and_times,
-    ];
 
     for (i, source) in config.results.iter().enumerate() {
         match source {
@@ -54,27 +269,8 @@ pub fn summarize(config: &Config) -> Result<()> {
                 eprintln!("url: {}", url);
             }
             Source::File(pathbuf) => {
-                let mut file = File::open(pathbuf)?;
-                let mut bytes = Vec::new();
-                file.read_to_end(&mut bytes)?;
-
-                let contents = Message::parse(&bytes)
-                    .and_then(|message| {
-                        if message.from().is_empty() {
-                            None
-                        } else {
-                            message.body_html(0).map(|body| body.into_owned())
-                        }
-                    })
-                    .unwrap_or_else(|| {
-                        let candidate = String::from_utf8_lossy(&bytes);
-                        if candidate.contains("<br/>") {
-                            candidate.replace("<br/>", "\n") // for quad/2012.html
-                        } else {
-                            candidate.into_owned()
-                        }
-                    });
-                if let Some(names_and_times) = parsers.iter().find_map(|parser| parser(&contents)) {
+                let contents = contents(pathbuf)?;
+                if let Some(names_and_times) = PARSERS.iter().find_map(|parser| parser(&contents)) {
                     // dump_ian_scores(&names_and_times);
                     merge(&mut h, names_and_times, i, n);
                 }
@@ -234,8 +430,8 @@ fn dump_ian_scores(names_and_times: &[(Cow<str>, Duration)]) {
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum MaleOrFemale {
-    Male,
-    Female,
+    Male = 0,
+    Female = 1,
 }
 
 impl Display for MaleOrFemale {
