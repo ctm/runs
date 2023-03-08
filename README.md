@@ -1,26 +1,24 @@
 # ctm runs
 
-This is an incredibly poorly written hack to extract finish times from
-event results and then sum the times for the people who have finished
-all of the events specified on the command line.
+This software extracts finish times from event results and then scores them
+by one of two methods.
 
-In theory, this could help out the Mt. Taylor 50k organizers who are
-also in charge of awarding out scarves for
-[doublers](http://www.mttaylor50k.com/mt.-taylor-doubler.html).  In
-reality, at least in 2023, I took too long to bring this code up to
-date to be a direct help.
+I started writing it in February of 2019, before I began work on
+[mb2](https://ctm.github.io/docs/players_manual/).  As such, much of
+the ancient code quality is poor.  Perhaps my more recent code is OK.
 
-Similarly, in theory, this could be useful for computing combined
-times for the [Burque Brewery
-Tour](https://www.abqroadrunners.com/burque-brewery-tour.html#/) or
-the Albuquerque Road Runners Race Series (RIP, killed by covid), but
-everything got weird in 2020 and I stopped work on this app.  When I
-went to look at it again, I was mortified by the various Rust
-atrocities I committed when I first wrote this code.
-[Nom](https://docs.rs/nom/latest/nom/) is awesome, but my use of it
-was putting together a jigsaw puzzle with a hammer.
+This software can help out the Mt. Taylor 50k organizers who are also
+in charge of awarding out scarves for
+[doublers](http://www.mttaylor50k.com/mt.-taylor-doubler.html).  It can
+also help the organizer of the [Albuquerque Road Runners Race Series](https://www.abqroadrunners.com/member-race-series.html)[^1].
 
-Here's what it looks like to compute the 2022/2023 doublers:
+## Duration Sum Mode
+
+If this software's arguments are N plain files, it attempts to extract
+finish times from each of the files and then computes the total time
+spent in all N races for any entrant who finished all N races.
+
+Here are the 2022/2023 doublers:
 
 ```
 [master]% cargo r -- assets/mt_taylor_50k/2022.mhtml assets/quad/2023.mhtml
@@ -69,4 +67,137 @@ Clifford Matthews 72:39:24.0  7:22:14.0 7:23:29.0 7:18:44.0 8:14:00.0 8:11:56.0 
  Crystal Anderson 93:58:41.0 10:10:36.0 7:56:02.0 7:52:28.0 8:03:23.0 7:46:30.0 9:52:52.0 10:09:43.0 10:48:08.0 10:02:44.0 11:16:15.0
 ```
 
-Whee!
+## Albuquerque Road Runners 2023 Race Series Point Modes
+
+### Points
+
+From the ABQ RR March 2023 newsletter:
+
+> For each race you finish, you’ll score points based on the winner’s
+> time divided by your time and expressed as a percentage. For
+> example, the winner finishes in 45:00 and you run 60 minutes, your
+> score is 75 points (45/60 * 100); male and female results calculated
+> separately. The list of eligible races is also shorter.
+>
+> There are 6 categories of race: standard 5k, 10k, half- marathon and
+> marathon distances, plus short trail and long trail races. To
+> encourage people to try different things, only your best score in
+> each category counts for the year-end total. As before, 10-year
+> age/gender divisions will apply, with your age on July 1 2023
+> determining which age- group you fall into.
+
+### Category Mode
+
+
+If a single directory is supplied as a command line argument, and the
+contents of that directory are all files, then that directory is considered
+a series category (e.g. 5k, 10k) and points are calculated for all the
+participants, with one line created for each participant.  That line has
+the maximum number of points for that participant and the race (or one
+of the races if there's a tie) that the participant gained those points
+from.
+
+Here's an example of the top twenty point scorers using the 2023 scoring
+system on the 2022 results of the 2023 10k races:
+
+```
+[master]% cargo r assets/abq_rr/2022/10k | head -20
+    Finished dev [unoptimized + debuginfo] target(s) in 14.21s
+     Running `target/debug/runs assets/abq_rr/2022/10k`
+100: Jeff Cuno                 Great Pumpkin Chase 10k 2022
+100: Katherine Lindenmuth      Run to Break The Silence 10k 2022
+100: Kellie Nickerson          Great Pumpkin Chase 10k 2022
+100: Tyrell Natewa             Run to Break The Silence 10k 2022
+100: Emily Boles               Shamrock Shuffle 10k 2022
+100: Chris Bratton             Shamrock Shuffle 10k 2022
+ 99: Christopher Bratton       Great Pumpkin Chase 10k 2022
+ 99: Jaime Dawes               Great Pumpkin Chase 10k 2022
+ 99: Erin Castillo             Shamrock Shuffle 10k 2022
+ 97: Caiden Dawes              Great Pumpkin Chase 10k 2022
+ 95: Ryan Platz                Great Pumpkin Chase 10k 2022
+ 93: Veronica Hutchinson       Run to Break The Silence 10k 2022
+ 93: Athena Shapiro            Great Pumpkin Chase 10k 2022
+ 93: Lynette Trujillo          Great Pumpkin Chase 10k 2022
+ 91: Gianna Rahmer             Run to Break The Silence 10k 2022
+ 90: Cheryl Lowe               Great Pumpkin Chase 10k 2022
+ 89: David Hubbard             Great Pumpkin Chase 10k 2022
+ 89: Miranda Harrison Marmaras Great Pumpkin Chase 10k 2022
+ 89: Kara Cervantes            Shamrock Shuffle 10k 2022
+ 87: Sydney Billingsley        Shamrock Shuffle 10k 2022
+```
+
+
+### Series Mode
+
+If a single directory is supplied as a command line argument, and the
+contents of that directory are all directories, then the top-level directory
+is considered a series, with the sub-directories each being categories.  As
+such, complete series standings are computed and printed.
+
+Here's an example of some of the output using the 2023 scoring but
+with the 2022 results for the 2023 categories and races:
+
+```
+[master]% cargo r assets/abq_rr/2022 | head -23
+cargo r assets/abq_rr/2022 | head -23
+    Finished dev [unoptimized + debuginfo] target(s) in 0.16s
+     Running `target/debug/runs assets/abq_rr/2022`
+   1  398 Kellie Nickerson
+      100   Great Pumpkin Chase 10k 2022
+      100   Forever Young 6 Miler 2022
+       98   Chocolate and Coffee 5k 2022
+      100   Run For The Zoo Half Marathon 2022
+
+   2  340 Anthony Phillips
+       85   Duke City Marathon Full 2022
+       63   Mt. Taylor 50k 2022
+      100   Forever Young 6 Miler 2022
+       92   Chocolate and Coffee 5k 2022
+
+   3  331 Anthony Martinez
+       87   Great Pumpkin Chase 10k 2022
+       78   Duke City Marathon Full 2022
+       83   Cherry Garcia 5k 2022
+       83   Chips and Salsa Half Marathon 2022
+
+   4  310 Christopher Brownsberger
+       78   Great Pumpkin Chase 10k 2022
+       79   Forever Young 6 Miler 2022
+       79   Chocolate and Coffee 5k 2022
+       74   Duke City Marathon Half 2022
+...
+
+  26  195 Zach Chenoweth
+       99   Chunky Monkey 5k 2022
+       96   Duke City Marathon Half 2022
+
+  26  195 Samantha Nelson
+       63   Shamrock Shuffle 10k 2022
+       69   Sandia Mountain Shadows Trail Run 5k 2022
+       63   Run For The Zoo Half Marathon 2022
+
+  28  194 Michael Brown
+       63   Shiprock Marathon 2022
+       65   Chocolate and Coffee 5k 2022
+       66   Chips and Salsa Half Marathon 2022
+
+  29  193 Chris Bratton
+      100   Shamrock Shuffle 10k 2022
+       93   Chips and Salsa Half Marathon 2022
+
+  29  193 Clifford Matthews
+       52   Duke City Marathon Full 2022
+       58   Mt. Taylor 50k 2022
+       83   Forever Young 6 Miler 2022
+
+  31  191 Ty Martinez
+       57   Duke City Marathon Full 2022
+       71   Chocolate and Coffee 5k 2022
+       63   Chips and Salsa Half Marathon 2022
+...
+```
+
+[^1]: As of Wednesday, March 8th, 2023, the rules on the ARR web-site
+are for the 2022 series.  This software computes points based on the
+2023 rules which were presented in the March 2023 ARR Newsletter, but
+haven't yet made it to the web site.
