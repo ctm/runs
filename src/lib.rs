@@ -209,7 +209,7 @@ fn summarize_files(entries: impl Iterator<Item = io::Result<DirEntry>>) -> Resul
     let width = scores.iter().map(|(name, ..)| name.len()).max().unwrap();
     for (name, ScoreInfo { points, path_index }) in scores {
         println!(
-            "{points:>3}: {name:width$} {:?}",
+            "{points:>3}: {name:width$} {}",
             paths_indexed(&paths, path_index)
         );
     }
