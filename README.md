@@ -10,7 +10,7 @@ the ancient code quality is poor.  Perhaps my more recent code is OK.
 This software can help out the Mt. Taylor 50k organizers who are also
 in charge of awarding out scarves for
 [doublers](http://www.mttaylor50k.com/mt.-taylor-doubler.html).  It can
-also help the organizer of the [Albuquerque Road Runners Race Series](https://www.abqroadrunners.com/member-race-series.html)[^1].
+also help the organizer of the [Albuquerque Road Runners Race Series](https://www.abqroadrunners.com/member-race-series.html).
 
 ## Duration Sum Mode
 
@@ -71,20 +71,21 @@ Clifford Matthews 72:39:24.0  7:22:14.0 7:23:29.0 7:18:44.0 8:14:00.0 8:11:56.0 
 
 ### Points
 
-From the ABQ RR March 2023 newsletter:
+From the [Albuquerque Road Runners Member Race Series Page](https://www.abqroadrunners.com/member-race-series.html):
 
 > For each race you finish, you’ll score points based on the winner’s
 > time divided by your time and expressed as a percentage. For
 > example, the winner finishes in 45:00 and you run 60 minutes, your
 > score is 75 points (45/60 * 100); male and female results calculated
-> separately. The list of eligible races is also shorter.
->
-> There are 6 categories of race: standard 5k, 10k, half- marathon and
-> marathon distances, plus short trail and long trail races. To
-> encourage people to try different things, only your best score in
+> separately.
+
+> There are 6 categories of race: standard 5k, 10, half-marathon and
+> marathon distances plus short trail and long trail races, and to
+> encourage people to try different things only your best score in
 > each category counts for the year-end total. As before, 10-year
 > age/gender divisions will apply, with your age on July 1 2023
-> determining which age- group you fall into.
+> determining which age-group you fall into.
+
 
 ### Category Mode
 
@@ -196,8 +197,3 @@ cargo r assets/abq_rr/2022 | head -23
        63   Chips and Salsa Half Marathon 2022
 ...
 ```
-
-[^1]: As of Wednesday, March 8th, 2023, the rules on the ARR web-site
-are for the 2022 series.  This software computes points based on the
-2023 rules which were presented in the March 2023 ARR Newsletter, but
-haven't yet made it to the web site.
