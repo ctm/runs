@@ -422,17 +422,17 @@ mod tests {
 
         let division = "DIVISION: MIXED 30-39\r\n    1 Stranger Things             42:45   54:21   49:38   21:28  2:48:11           47:27   39:04   29:26  1:35:49 4:24:00   417 Team:MF30-39  \r\n    2 Team Drago                1:03:53   53:07   43:02   24:13  3:04:14   12:49   21:07   43:20   46:46  2:04:02 5:08:15   418 Team:MF30-39  \r\n    3 JHM Gym                   1:23:46   52:04   38:26   18:56  3:13:10    8:03   20:41   35:51   52:11  1:56:44 5:09:54   414 Team:MF30-39  \r\n    4 All Swedish No Finish     1:00:22   58:00   39:34   28:02  3:05:57   13:02   18:08   44:21   49:31  2:05:00 5:10:57   413 Team:MF30-39  \r\n    5 SaDaJoCla                 1:07:22   58:04   52:28   29:51  3:27:43   16:55   37:11   41:42   48:39  2:24:26 5:52:09   415 Team:MF30-39  \r\n    6 Three Legged Foxes        1:03:07   58:16   49:23   37:30  3:28:13   18:18   44:36   45:27   50:05  2:38:25 6:06:38   419 Team:MF30-39  \r\n    7 Self Inflicted Fitness    1:18:34 1:10:54   45:32   34:08  3:49:08   15:42                 5:26:12  2:55:39 6:44:46   416 Team:MF30-39  \r\n";
 
-        let placements = category_block(category).unwrap().1;
+        let placements = category_block(21)(category).unwrap().1;
         println!("placements = {:?}", placements);
 
-        let placements = category_block(division).unwrap().1;
+        let placements = category_block(21)(division).unwrap().1;
         println!("placements = {:?}", placements);
     }
 
     #[test]
     fn test_placement() {
         let line = "    6 Clifford Matthews     5:05:05           47:35   31:21  3:30:01   10:33   30:42   53:50   50:18  2:25:22 5:55:22    99 \r\n";
-        let placement = placement(Some("MALE 50-59"))(line).unwrap().1;
+        let placement = placement(Some("MALE 50-59"), 21)(line).unwrap().1;
         // TODO: compare to known good parse
         println!("placement = {:?}", placement);
     }
