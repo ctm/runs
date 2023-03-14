@@ -1,7 +1,8 @@
 pub mod ancient_ultra_signup;
-pub mod ath_links;
+pub mod athlinks;
 pub mod ccr_timing;
 pub mod chrono_track;
+pub mod its_your_race;
 pub mod race_roster;
 pub mod run_fit;
 pub mod runsignup;
@@ -43,6 +44,7 @@ where
     terminated(take_until(tag_to_match), tag(tag_to_match))
 }
 
+// TODO: move this to digital-duration-nom
 fn duration_deserializer<'de, D: Deserializer<'de>>(d: D) -> Result<Duration, D::Error> {
     let s: String = String::deserialize(d)?;
     s.parse::<Duration>().map_err(serde::de::Error::custom)

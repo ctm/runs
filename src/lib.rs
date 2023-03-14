@@ -4,8 +4,8 @@ mod parser;
 
 use {
     crate::parser::{
-        ancient_ultra_signup, ath_links, ccr_timing, chrono_track, race_roster, run_fit, runsignup,
-        runsignup_mhtml, taos, ultra_signup, ultra_signup_mhtml, web_scorer,
+        ancient_ultra_signup, athlinks, ccr_timing, chrono_track, its_your_race, race_roster,
+        run_fit, runsignup, runsignup_mhtml, taos, ultra_signup, ultra_signup_mhtml, web_scorer,
     },
     anyhow::{bail, Error, Result},
     digital_duration_nom::duration::Duration,
@@ -216,19 +216,20 @@ fn summarize_files(entries: impl Iterator<Item = io::Result<DirEntry>>) -> Resul
     Ok(())
 }
 
-static PARSERS: [fn(&str) -> OptionalResults; 12] = [
+static PARSERS: [fn(&str) -> OptionalResults; 13] = [
     ultra_signup::StatusesWithPlacements::names_and_times,
     ccr_timing::Placement::soloist_names_and_times,
     web_scorer::Placement::names_and_times,
     run_fit::Placement::names_and_times,
     runsignup::Placement::names_and_times,
-    ath_links::Placement::names_and_times,
+    athlinks::Placement::names_and_times,
     chrono_track::Placement::names_and_times,
     taos::Placement::names_and_times,
     ancient_ultra_signup::Placement::names_and_times,
     ultra_signup_mhtml::StatusesWithPlacements::names_and_times,
     runsignup_mhtml::Placement::names_and_times,
     race_roster::Placement::names_and_times,
+    its_your_race::Placement::names_and_times,
 ];
 
 fn contents(p: &Path) -> Result<String> {
