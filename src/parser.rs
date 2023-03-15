@@ -12,15 +12,11 @@ pub mod ultra_signup;
 pub mod ultra_signup_mhtml;
 pub mod web_scorer;
 
-use {
-    digital_duration_nom::duration::Duration,
-    nom::{
-        bytes::complete::{tag, take_until},
-        error::ParseError,
-        sequence::terminated,
-        Compare, FindSubstring, IResult, InputLength, InputTake,
-    },
-    serde::{Deserialize, Deserializer},
+use nom::{
+    bytes::complete::{tag, take_until},
+    error::ParseError,
+    sequence::terminated,
+    Compare, FindSubstring, IResult, InputLength, InputTake,
 };
 
 #[allow(dead_code)]
@@ -42,10 +38,4 @@ where
     T: InputLength + Copy,
 {
     terminated(take_until(tag_to_match), tag(tag_to_match))
-}
-
-// TODO: move this to digital-duration-nom
-fn duration_deserializer<'de, D: Deserializer<'de>>(d: D) -> Result<Duration, D::Error> {
-    let s: String = String::deserialize(d)?;
-    s.parse::<Duration>().map_err(serde::de::Error::custom)
 }

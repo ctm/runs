@@ -1,5 +1,5 @@
 use {
-    crate::{parser, prelude::*},
+    crate::prelude::*,
     digital_duration_nom::duration::Duration,
     serde::Deserialize,
     std::{
@@ -14,9 +14,7 @@ pub struct Placement {
     rank: NonZeroU16,
     name: String,
     bib: String,
-    #[serde(deserialize_with = "parser::duration_deserializer")]
     time: Duration,
-    #[serde(deserialize_with = "parser::duration_deserializer")]
     pace: Duration,
     hometown: String,
     age: Option<NonZeroU8>,

@@ -1,5 +1,4 @@
 use {
-    super::duration_deserializer,
     crate::prelude::*,
     digital_duration_nom::duration::Duration,
     serde::Deserialize,
@@ -17,7 +16,6 @@ struct Placement {
     age: NonZeroU8,
     gender: String,
     gp: u16,
-    #[serde(deserialize_with = "duration_deserializer")]
     time: Duration,
     rank: f32,
 }
