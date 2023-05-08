@@ -9,7 +9,7 @@ phf_codegen = "0.11.1"
 
 [dependencies]
 nom = "7.1.3"
-serde = { version = "1.0.160", features = ["derive"] }
+serde = { version = "1.0.162", features = ["derive"] }
 serde_json = "1.0.96"
 htmlescape = "0.3.1"
 digital-duration-nom = { version = "0.5.0", git = "https://github.com/ctm/digital-duration-nom", features = ["serde"] }
