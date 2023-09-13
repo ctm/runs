@@ -121,19 +121,25 @@ fn placement(input: &str) -> IResult<&str, Placement> {
         tuple((
             preceded(
                 tuple((many0(heading_tr), tr)),
-                map_res(td, |digits: &str| digits.parse()),
+                map_res(td, |digits: &str| digits.parse()), // place
             ),
-            td,
-            map(td, |string| {
+            td, // name
+            map(td, |string| { // city
                 if string.is_empty() {
                     None
                 } else {
                     Some(string)
                 }
             }),
-            td,
-            opt(map_res(td, |digits: &str| digits.parse())),
-            opt(map_parser(td, gender)),
+            td, // bib
+            map(td, |string| { // age
+                if string.is_empty() {
+                    None
+                } else {
+                    string.parse().ok()
+                }
+            }),
+            opt(map_parser(td, gender)), // gender
             opt(td),
             map_res(td, |duration| duration.parse()),
             opt(map_res(td, |duration| duration.parse())),
