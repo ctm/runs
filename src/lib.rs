@@ -173,26 +173,28 @@ fn score_files(
                 let time = (*time).as_secs();
                 if let Some(morf) = morf {
                     let morf = morf as usize;
-                    let new_points = match &firsts[morf] {
-                        None => {
-                            firsts[morf] = Some(time);
-                            100
+                    if morf < 2 {
+                        let new_points = match &firsts[morf] {
+                            None => {
+                                firsts[morf] = Some(time);
+                                100
+                            }
+                            Some(first) => (first * 100 / time) as u16,
+                        };
+                        if let Some(ScoreInfo { points, path_index }) = h.get_mut(name.as_ref()) {
+                            if new_points > *points {
+                                *points = new_points;
+                                *path_index = i as u8;
+                            }
+                        } else {
+                            h.insert(
+                                names::canonical(name).into_owned(),
+                                ScoreInfo {
+                                    points: new_points,
+                                    path_index: i as u8,
+                                },
+                            );
                         }
-                        Some(first) => (first * 100 / time) as u16,
-                    };
-                    if let Some(ScoreInfo { points, path_index }) = h.get_mut(name.as_ref()) {
-                        if new_points > *points {
-                            *points = new_points;
-                            *path_index = i as u8;
-                        }
-                    } else {
-                        h.insert(
-                            names::canonical(name).into_owned(),
-                            ScoreInfo {
-                                points: new_points,
-                                path_index: i as u8,
-                            },
-                        );
                     }
                 }
             }
@@ -237,7 +239,8 @@ fn contents(p: &Path) -> Result<String> {
     let mut bytes = Vec::new();
     file.read_to_end(&mut bytes)?;
 
-    Ok(MessageParser::default().parse(&bytes)
+    Ok(MessageParser::default()
+        .parse(&bytes)
         .and_then(|message| {
             if message.from().is_none() {
                 None
@@ -433,6 +436,7 @@ fn dump_ian_scores(names_and_times: &[(Cow<str>, Duration)]) {
 pub enum MaleOrFemale {
     Male = 0,
     Female = 1,
+    NonBinary = 2,
 }
 
 impl Display for MaleOrFemale {
@@ -443,6 +447,7 @@ impl Display for MaleOrFemale {
             match self {
                 MaleOrFemale::Male => "M",
                 MaleOrFemale::Female => "F",
+                MaleOrFemale::NonBinary => "X",
             }
         )
     }

@@ -160,6 +160,7 @@ fn gender(input: &str) -> IResult<&str, MaleOrFemale> {
     alt((
         value(MaleOrFemale::Male, tag("M")),
         value(MaleOrFemale::Female, tag("F")),
+        value(MaleOrFemale::NonBinary, tag("X")),
     ))(input)
 }
 
