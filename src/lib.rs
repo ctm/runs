@@ -10,7 +10,7 @@ use {
     anyhow::{bail, Error, Result},
     digital_duration_nom::duration::Duration,
     itertools::Itertools,
-    mail_parser::Message,
+    mail_parser::MessageParser,
     reqwest::Url,
     std::{
         borrow::Cow,
@@ -237,9 +237,9 @@ fn contents(p: &Path) -> Result<String> {
     let mut bytes = Vec::new();
     file.read_to_end(&mut bytes)?;
 
-    Ok(Message::parse(&bytes)
+    Ok(MessageParser::default().parse(&bytes)
         .and_then(|message| {
-            if message.from().is_empty() {
+            if message.from().is_none() {
                 None
             } else {
                 message.body_html(0).map(|body| body.into_owned())
