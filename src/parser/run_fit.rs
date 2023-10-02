@@ -124,7 +124,8 @@ fn placement(input: &str) -> IResult<&str, Placement> {
                 map_res(td, |digits: &str| digits.parse()), // place
             ),
             td, // name
-            map(td, |string| { // city
+            map(td, |string| {
+                // city
                 if string.is_empty() {
                     None
                 } else {
@@ -132,7 +133,8 @@ fn placement(input: &str) -> IResult<&str, Placement> {
                 }
             }),
             td, // bib
-            map(td, |string| { // age
+            map(td, |string| {
+                // age
                 if string.is_empty() {
                     None
                 } else {
@@ -140,12 +142,11 @@ fn placement(input: &str) -> IResult<&str, Placement> {
                 }
             }),
             opt(map_parser(td, gender)), // gender
-            opt(td),
-            map_res(td, |duration| duration.parse()),
-            opt(map_res(td, |duration| duration.parse())),
-            terminated(opt(td), close_tr),
+            opt(td),                     // age group place
+            chip_and_gun_time,
+            terminated(opt(td), close_tr), // pace
         )),
-        |(place, name, city, bib, age, gender, age_group_place, chip_time, gun_time, pace)| {
+        |(place, name, city, bib, age, gender, age_group_place, (chip_time, gun_time), pace)| {
             Placement {
                 place,
                 name,
@@ -167,6 +168,35 @@ fn gender(input: &str) -> IResult<&str, MaleOrFemale> {
         value(MaleOrFemale::Male, tag("M")),
         value(MaleOrFemale::Female, tag("F")),
         value(MaleOrFemale::NonBinary, tag("X")),
+    ))(input)
+}
+
+// Returns a chip time and an optional gun time, but first tries to
+// consume and discard an optional time back (which I first
+// encountered in the Sandia Mountain Shadows Trail Run).
+//
+// We can't just consume all three times as an optional Duration,
+// followed by a non-optional Duration followed by an optional
+// Duration, because that would get us off track, so we explicitly try
+// for an (optional td, Duration, Duration) tuple and if that fails,
+// try for a (Duration, optional Duration) tuple.
+//
+// This sufficiently ad hoc that we need to run regression tests
+// against all our Run Fit assets each time we change this code.
+fn chip_and_gun_time(input: &str) -> IResult<&str, (Duration, Option<Duration>)> {
+    alt((
+        map(
+            tuple((
+                opt(td),
+                map_res(td, |duration| duration.parse()),
+                map_res(td, |duration| duration.parse()),
+            )),
+            |(_time_back, chip, gun)| (chip, Some(gun)),
+        ),
+        tuple((
+            map_res(td, |duration| duration.parse()),
+            opt(map_res(td, |duration| duration.parse())),
+        )),
     ))(input)
 }
 
