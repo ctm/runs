@@ -116,6 +116,10 @@ fn td(input: &str) -> IResult<&str, &str> {
     )(input)
 }
 
+fn td_duration(input: &str) -> IResult<&str, Duration> {
+    map_res(td, |digits: &str| digits.parse())(input)
+}
+
 fn placement(input: &str) -> IResult<&str, Placement> {
     map(
         tuple((
@@ -186,17 +190,10 @@ fn gender(input: &str) -> IResult<&str, MaleOrFemale> {
 fn chip_and_gun_time(input: &str) -> IResult<&str, (Duration, Option<Duration>)> {
     alt((
         map(
-            tuple((
-                opt(td),
-                map_res(td, |duration| duration.parse()),
-                map_res(td, |duration| duration.parse()),
-            )),
+            tuple((opt(td), td_duration, td_duration)),
             |(_time_back, chip, gun)| (chip, Some(gun)),
         ),
-        tuple((
-            map_res(td, |duration| duration.parse()),
-            opt(map_res(td, |duration| duration.parse())),
-        )),
+        tuple((td_duration, opt(td_duration))),
     ))(input)
 }
 
