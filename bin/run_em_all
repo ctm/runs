@@ -1,0 +1,15 @@
+#! /bin/zsh
+
+# Quick hack to run this on all the assets.  Expect it to flag
+# "Cinco de Mayo Not Held in 2022"
+# since there really are 0 matching entries.
+#
+# This is only checking to make sure we haven't gone to 0 matches.  As
+# written, it won't detect if we find fewer lines before as long as we
+# find at least one.
+
+set -o errexit pipefail
+
+cargo build --release 2> /dev/null
+export IFS=$'\n'
+for f in $(find assets -not -name '.*' -type f); do echo -n "$f "; target/release/runs "$f" | wc -l; done 2> /dev/null | grep ' 0$'
