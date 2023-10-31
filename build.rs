@@ -22,6 +22,7 @@ fn main() {
         .entry("deadhead", "\"Clifford Matthews\"")
         .entry("Deadhead", "\"Clifford Matthews\"")
         .entry("Cliff Matthews", "\"Clifford Matthews\"")
+        .entry("Cliford Matthews", "\"Clifford Matthews\"")
         .entry("CLIFFORD MATTHEWS", "\"Clifford Matthews\"")
         .entry("Crystal Andersen", "\"Crystal Anderson\"")
         .entry("Guil Marez", "\"Guill Marez\"")
