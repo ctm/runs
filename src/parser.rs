@@ -2,6 +2,7 @@ pub mod ancient_ultra_signup;
 pub mod athlinks;
 pub mod ccr_timing;
 pub mod chrono_track;
+pub mod csv;
 pub mod its_your_race;
 pub mod race_roster;
 pub mod run_fit;

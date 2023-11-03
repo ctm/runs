@@ -4,7 +4,7 @@ mod parser;
 
 use {
     crate::parser::{
-        ancient_ultra_signup, athlinks, ccr_timing, chrono_track, its_your_race, race_roster,
+        ancient_ultra_signup, athlinks, ccr_timing, chrono_track, csv, its_your_race, race_roster,
         run_fit, runsignup, runsignup_mhtml, taos, ultra_signup, ultra_signup_mhtml, web_scorer,
     },
     anyhow::{bail, Error, Result},
@@ -12,6 +12,7 @@ use {
     itertools::Itertools,
     mail_parser::MessageParser,
     reqwest::Url,
+    serde::Deserialize,
     std::{
         borrow::Cow,
         cmp::Reverse,
@@ -121,7 +122,7 @@ fn score_directories(
     fold_paths(
         entries,
         |p| p.read_dir().map_err(|e| e.into()).and_then(score_files),
-        |mut h, (_i, (mut new_paths, scores))| {
+        |mut h: HashMap<_, Vec<ScoreInfo>>, (_i, (mut new_paths, scores))| {
             let offset = paths.len() as u8;
             paths.append(&mut new_paths);
             for (name, mut score_info) in scores.into_iter() {
@@ -129,7 +130,7 @@ fn score_directories(
                     ref mut path_index, ..
                 } = score_info;
                 *path_index += offset;
-                h.entry(name).or_insert_with(Vec::new).push(score_info);
+                h.entry(name).or_default().push(score_info);
             }
             h
         },
@@ -218,7 +219,7 @@ fn summarize_files(entries: impl Iterator<Item = io::Result<DirEntry>>) -> Resul
     Ok(())
 }
 
-static PARSERS: [fn(&str) -> OptionalResults; 13] = [
+static PARSERS: [fn(&str) -> OptionalResults; 14] = [
     ultra_signup::StatusesWithPlacements::names_and_times,
     ccr_timing::Placement::soloist_names_and_times,
     web_scorer::Placement::names_and_times,
@@ -232,6 +233,7 @@ static PARSERS: [fn(&str) -> OptionalResults; 13] = [
     runsignup_mhtml::Placement::names_and_times,
     race_roster::Placement::names_and_times,
     its_your_race::Placement::names_and_times,
+    csv::Placement::names_and_times,
 ];
 
 fn contents(p: &Path) -> Result<String> {
@@ -432,7 +434,7 @@ fn dump_ian_scores(names_and_times: &[(Cow<str>, Duration)]) {
     }
 }
 
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
 pub enum MaleOrFemale {
     Male = 0,
     Female = 1,
@@ -464,7 +466,8 @@ pub(crate) trait Morf: Gender {
         match self.gender() {
             "M" | "Male" => Some(Male),
             "F" | "Female" => Some(Female),
-            "X" | "U" | "" => None,
+            "X" => Some(NonBinary),
+            "U" | "" => None,
             other => panic!("Unknown gender: {}", other),
         }
     }
@@ -476,4 +479,5 @@ pub(crate) type OptionalResults<'a> = Option<Vec<(Cow<'a, str>, Duration, Option
 
 pub(crate) mod prelude {
     pub(crate) use super::{Gender, MaleOrFemale, Morf, OptionalResults};
+    pub(crate) use std::borrow::Cow;
 }
