@@ -351,7 +351,7 @@ fn print(all_results: HashMap<String, Vec<Option<Duration>>>) {
 fn widths(results: &[(Duration, &String, Vec<&Duration>)]) -> (usize, usize, Vec<usize>) {
     use std::cmp::max;
 
-    let n_elements = results.get(0).map(|(_, _, v)| v.len()).unwrap_or(0);
+    let n_elements = results.first().map(|(_, _, v)| v.len()).unwrap_or(0);
     let time_widths = vec![0; n_elements];
     results
         .iter()
