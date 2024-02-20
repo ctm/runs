@@ -4,6 +4,7 @@ pub mod ccr_timing;
 pub mod chrono_track;
 pub mod csv;
 pub mod its_your_race;
+pub mod race_result_mhtml;
 pub mod race_roster;
 pub mod run_fit;
 pub mod runsignup;

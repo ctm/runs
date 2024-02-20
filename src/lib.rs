@@ -1,3 +1,6 @@
+#![feature(closure_lifetime_binder)]
+use parser::race_result_mhtml;
+
 mod hashes;
 mod names;
 mod parser;
@@ -218,7 +221,7 @@ fn summarize_files(entries: impl Iterator<Item = io::Result<DirEntry>>) -> Resul
     Ok(())
 }
 
-static PARSERS: [fn(&str) -> OptionalResults; 14] = [
+static PARSERS: [fn(&str) -> OptionalResults; 15] = [
     ultra_signup::StatusesWithPlacements::names_and_times,
     ccr_timing::Placement::soloist_names_and_times,
     web_scorer::Placement::names_and_times,
@@ -233,6 +236,7 @@ static PARSERS: [fn(&str) -> OptionalResults; 14] = [
     race_roster::Placement::names_and_times,
     its_your_race::Placement::names_and_times,
     csv::Placement::names_and_times,
+    race_result_mhtml::Placement::names_and_times,
 ];
 
 fn contents(p: &Path) -> Result<String> {
