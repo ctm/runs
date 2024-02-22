@@ -1,8 +1,6 @@
 use {
-    crate::prelude::*,
-    digital_duration_nom::duration::Duration,
-    serde::Deserialize,
-    std::{borrow::Cow, str::FromStr},
+    crate::prelude::*, digital_duration_nom::duration::Duration, serde::Deserialize,
+    std::str::FromStr,
 };
 
 pub enum Status {

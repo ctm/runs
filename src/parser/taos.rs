@@ -8,7 +8,6 @@ use {
         IResult,
     },
     std::{
-        borrow::Cow,
         num::{NonZeroU16, NonZeroU8},
         str::FromStr,
     },

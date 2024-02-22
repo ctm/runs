@@ -23,7 +23,6 @@ use {
         io::{self, Read},
         path::{Path, PathBuf},
         str::FromStr,
-        string::String,
     },
 };
 

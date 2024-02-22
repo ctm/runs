@@ -2,7 +2,6 @@ use {
     crate::prelude::*,
     digital_duration_nom::duration::Duration,
     serde::{Deserialize, Deserializer},
-    std::borrow::Cow,
 };
 
 #[allow(dead_code)]

@@ -16,7 +16,6 @@ use {
         IResult,
     },
     std::{
-        borrow::Cow,
         fmt::{self, Display, Formatter},
         num::{NonZeroU16, NonZeroU8},
     },

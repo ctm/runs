@@ -10,7 +10,7 @@ use {
         sequence::{preceded, terminated, tuple},
         IResult,
     },
-    std::{borrow::Cow, fmt, str::FromStr},
+    std::{fmt, str::FromStr},
 };
 
 #[derive(Debug)]

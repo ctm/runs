@@ -10,7 +10,7 @@ use {
         sequence::{preceded, terminated, tuple},
         IResult,
     },
-    std::{borrow::Cow, cmp::Ordering, fmt},
+    std::{cmp::Ordering, fmt},
 };
 
 #[derive(Clone, Copy, Debug)]

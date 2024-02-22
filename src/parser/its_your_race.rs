@@ -1,10 +1,8 @@
 // NOTE: sex is not currently implemented
 
 use {
-    crate::prelude::*,
-    digital_duration_nom::duration::Duration,
-    serde::Deserialize,
-    std::{borrow::Cow, num::NonZeroU16},
+    crate::prelude::*, digital_duration_nom::duration::Duration, serde::Deserialize,
+    std::num::NonZeroU16,
 };
 
 #[allow(dead_code)]

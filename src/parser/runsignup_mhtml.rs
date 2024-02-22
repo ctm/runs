@@ -12,7 +12,6 @@ use {
         sequence::{preceded, terminated, tuple},
         IResult,
     },
-    std::borrow::Cow,
 };
 
 #[allow(dead_code)]

@@ -2,10 +2,7 @@ use {
     crate::prelude::*,
     digital_duration_nom::duration::Duration,
     serde::Deserialize,
-    std::{
-        borrow::Cow,
-        num::{NonZeroU16, NonZeroU8},
-    },
+    std::num::{NonZeroU16, NonZeroU8},
 };
 
 #[allow(dead_code)]
