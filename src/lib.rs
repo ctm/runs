@@ -8,6 +8,7 @@ use {
         run_fit, runsignup, runsignup_mhtml, taos, ultra_signup, ultra_signup_mhtml, web_scorer,
     },
     anyhow::{bail, Error, Result},
+    clap::Parser,
     digital_duration_nom::duration::Duration,
     itertools::Itertools,
     mail_parser::MessageParser,
@@ -24,7 +25,6 @@ use {
         str::FromStr,
         string::String,
     },
-    structopt::StructOpt,
 };
 
 pub fn summarize(config: &Config) -> Result<()> {
@@ -366,7 +366,7 @@ fn widths(results: &[(Duration, &String, Vec<&Duration>)]) -> (usize, usize, Vec
         })
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 enum Source {
     Url(Url),
     File(PathBuf),
@@ -383,7 +383,7 @@ impl FromStr for Source {
     }
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 #[structopt()]
 /// Runs merges results from races, keeping track of who has completed
 /// all races.  The output is a set of lines, one per person, sorted
@@ -405,7 +405,7 @@ pub struct Config {
 
 impl Config {
     pub fn new() -> Result<Self> {
-        Ok(Config::from_iter_safe(std::env::args())?)
+        Ok(Config::try_parse_from(std::env::args())?)
     }
 }
 
