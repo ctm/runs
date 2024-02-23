@@ -236,7 +236,7 @@ static PARSERS: [fn(&str) -> OptionalResults; 15] = [
     race_roster::Placement::names_and_times,
     its_your_race::Placement::names_and_times,
     csv::Placement::names_and_times,
-    race_result_mhtml::Placement::names_and_times,
+    race_result_mhtml::names_and_times,
 ];
 
 fn contents(p: &Path) -> Result<String> {

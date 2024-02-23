@@ -26,22 +26,6 @@ use {
 // that there will be exactly two counts in the future or even that the
 // counts will be different, but this is good enough for now.
 
-#[allow(dead_code)]
-#[derive(Debug)]
-pub(crate) struct Placement<'a> {
-    place: NonZeroU16,
-    bib: NonZeroU16,
-    name: &'a str,
-    city_state: Option<&'a str>,
-    // Country
-    // AG Rank
-    gender_rank: &'a str,
-    // 13.1M
-    // 19.1M
-    final_time: Duration,
-    pace: Duration,
-}
-
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(crate) enum Field {
     Place,
@@ -56,7 +40,7 @@ pub(crate) enum Field {
 const N_FIELDS: usize = 7;
 
 impl TryFrom<&str> for Field {
-    type Error = &'static str;
+    type Error = String;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         use Field::*;
@@ -69,71 +53,83 @@ impl TryFrom<&str> for Field {
             "Gender" => Ok(GenderRank),
             "Final Time" => Ok(FinalTime),
             "Pace" => Ok(Pace),
-            _ => Err("unknown field"),
+            field => Err(format!("unknown field: {field}")),
         }
     }
 }
 
-fn getter_constructor<T: FromStr>(
+fn getter<T: FromStr>(
     offset_for_field: &HashMap<Field, usize>,
     field: Field,
 ) -> Option<impl Fn(&[ElementRef]) -> Option<T>> {
-    str_getter_constructor(offset_for_field, field)
+    str_getter(offset_for_field, field)
         .map(|getter| move |tds: &[ElementRef]| -> Option<T> { getter(tds)?.parse().ok() })
 }
 
-fn str_getter_constructor(
+fn str_getter(
     offset_for_field: &HashMap<Field, usize>,
     field: Field,
-) -> Option<impl for<'a> Fn(&[ElementRef<'a>]) -> Option<&'a str>> {
+) -> Option<impl for<'doc> Fn(&[ElementRef<'doc>]) -> Option<&'doc str>> {
     let offset = *offset_for_field.get(&field)?;
 
     Some(
-        for<'a, 'b> move |tds: &'a [ElementRef<'b>]| -> Option<&'b str> {
+        for<'tds, 'doc> move |tds: &'tds [ElementRef<'doc>]| -> Option<&'doc str> {
             tds.get(offset)?.text().next()
         },
     )
 }
 
-fn placements<'a>(
-    table: ElementRef<'a>,
-    offset_for_field: &HashMap<Field, usize>,
-) -> Option<Vec<Placement<'a>>> {
-    use Field::*;
-
-    let place_getter = getter_constructor::<NonZeroU16>(offset_for_field, Place)?;
-    let bib_getter = getter_constructor::<NonZeroU16>(offset_for_field, Bib)?;
-    let name_getter = str_getter_constructor(offset_for_field, Name)?;
-    let city_state_getter = str_getter_constructor(offset_for_field, CityState)?;
-    let gender_rank_getter = str_getter_constructor(offset_for_field, GenderRank)?;
-    let final_time_getter = getter_constructor::<Duration>(offset_for_field, FinalTime)?;
-    let pace_getter = getter_constructor::<Duration>(offset_for_field, Pace)?;
-
-    let td = Selector::parse("td").unwrap();
-    let candidates = table
-        .select(&Selector::parse("tbody tr").unwrap())
-        .filter_map(|elem| {
-            let tds = elem.select(&td).collect::<Vec<_>>();
-            Some(Placement {
-                place: place_getter(&tds)?,
-                bib: bib_getter(&tds)?,
-                name: name_getter(&tds)?,
-                city_state: city_state_getter(&tds),
-                gender_rank: gender_rank_getter(&tds)?,
-                final_time: final_time_getter(&tds)?,
-                pace: pace_getter(&tds)?,
-            })
-        })
-        .collect::<Vec<_>>();
-    if candidates.is_empty() {
-        None
-    } else {
-        Some(candidates)
-    }
+#[allow(dead_code)]
+#[derive(Debug)]
+pub(crate) struct Placement<'doc> {
+    place: NonZeroU16,
+    bib: NonZeroU16,
+    name: &'doc str,
+    city_state: Option<&'doc str>,
+    // Country
+    // AG Rank
+    gender_rank: &'doc str,
+    // 13.1M
+    // 19.1M
+    final_time: Duration,
+    pace: Duration,
 }
 
-impl<'a> Placement<'a> {
-    fn gender_count(&self) -> Option<&'a str> {
+fn placements<'doc>(
+    table: ElementRef<'doc>,
+    offset_for_field: &HashMap<Field, usize>,
+) -> Option<Vec<Placement<'doc>>> {
+    use Field::*;
+
+    let place = getter::<NonZeroU16>(offset_for_field, Place)?;
+    let bib = getter::<NonZeroU16>(offset_for_field, Bib)?;
+    let name = str_getter(offset_for_field, Name)?;
+    let city_state = str_getter(offset_for_field, CityState)?;
+    let gender_rank = str_getter(offset_for_field, GenderRank)?;
+    let final_time = getter::<Duration>(offset_for_field, FinalTime)?;
+    let pace = getter::<Duration>(offset_for_field, Pace)?;
+
+    let td = Selector::parse("td").unwrap();
+    let candidates: Vec<_> = table
+        .select(&Selector::parse("tbody tr").unwrap())
+        .filter_map(|elem| {
+            let tds: Vec<_> = elem.select(&td).collect();
+            Some(Placement {
+                place: place(&tds)?,
+                bib: bib(&tds)?,
+                name: name(&tds)?,
+                city_state: city_state(&tds),
+                gender_rank: gender_rank(&tds)?,
+                final_time: final_time(&tds)?,
+                pace: pace(&tds)?,
+            })
+        })
+        .collect();
+    (!candidates.is_empty()).then_some(candidates)
+}
+
+impl<'doc> Placement<'doc> {
+    fn gender_count(&self) -> Option<&'doc str> {
         self.gender_rank.split('/').nth(1)
     }
 
@@ -145,39 +141,6 @@ impl<'a> Placement<'a> {
                 fields_for_indexes(table)
                     .and_then(|fields_for_indexes| placements(table, &fields_for_indexes))
             })
-    }
-
-    pub fn names_and_times(input: &str) -> OptionalResults {
-        let document = Html::parse_document(input);
-        Self::results(&document).and_then(|placements| {
-            let (male, female) = Self::male_and_female_counts(&placements)?;
-            Some(
-                placements
-                    .into_iter()
-                    .map(|p| {
-                        let morf = p.morf(male, female);
-                        (p.name.to_string().into(), p.final_time, morf)
-                    })
-                    .collect(),
-            )
-        })
-    }
-
-    fn male_and_female_counts<'b>(placements: &[Placement<'b>]) -> Option<(&'b str, &'b str)> {
-        let mut placements = placements.iter();
-        let first = placements.next()?.gender_count()?;
-        let mut second;
-        while {
-            second = placements.next()?.gender_count()?;
-            second == first
-        } {}
-        let first_value: NonZeroU16 = first.parse().ok()?;
-        let second_value: NonZeroU16 = second.parse().ok()?;
-        Some(if first_value >= second_value {
-            (first, second)
-        } else {
-            (second, first)
-        })
     }
 
     fn morf(&self, male: &str, female: &str) -> Option<MaleOrFemale> {
@@ -193,6 +156,42 @@ impl<'a> Placement<'a> {
             }
         }
     }
+}
+
+pub fn names_and_times(input: &str) -> OptionalResults {
+    let document = Html::parse_document(input);
+    Placement::results(&document).and_then(|placements| {
+        let (male, female) = male_and_female_counts(&placements)?;
+        Some(
+            placements
+                .into_iter()
+                .map(|p| {
+                    (
+                        p.name.to_string().into(),
+                        p.final_time,
+                        p.morf(male, female),
+                    )
+                })
+                .collect(),
+        )
+    })
+}
+
+fn male_and_female_counts<'doc>(placements: &[Placement<'doc>]) -> Option<(&'doc str, &'doc str)> {
+    let mut placements = placements.iter();
+    let first = placements.next()?.gender_count()?;
+    let mut second;
+    while {
+        second = placements.next()?.gender_count()?;
+        second == first
+    } {}
+    let first_value: NonZeroU16 = first.parse().ok()?;
+    let second_value: NonZeroU16 = second.parse().ok()?;
+    Some(if first_value >= second_value {
+        (first, second)
+    } else {
+        (second, first)
+    })
 }
 
 fn fields_for_indexes(table: ElementRef) -> Option<HashMap<Field, usize>> {
