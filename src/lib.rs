@@ -1,4 +1,3 @@
-#![feature(closure_lifetime_binder)]
 use parser::race_result_mhtml;
 
 mod hashes;

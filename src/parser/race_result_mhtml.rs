@@ -14,11 +14,11 @@ use {
 // I jumped through the lifetime hoops just to see if I could (i.e. to
 // test myself and get practice doing it). When I started this project
 // I didn't understand lifetimes as well as I do now. I still get
-// spanked by the compiler quite a bit and I even had to use
-// feature(closure_lifetime_binder) from nightly, but I was pretty
-// tired while I worked on this projet (and often distracted by a
-// toothache, whic is why I was tired).  So, I think it was a good use
-// of my time.
+// spanked by the compiler quite a bit and I even used
+// feature(closure_lifetime_binder) from nightly, for a while, but I
+// was pretty tired while I worked on this projet (and often
+// distracted by a toothache, whic is why I was tired).  So, I think
+// it was a good use of my time.
 
 // They don't explicitly list the gender, but at least for the El Paso
 // Marathon in 2024, there are only two counts, 70 and 228.  So the
@@ -58,25 +58,19 @@ impl TryFrom<&str> for Field {
     }
 }
 
-fn getter<T: FromStr>(
-    offset_for_field: &HashMap<Field, usize>,
-    field: Field,
-) -> Option<impl Fn(&[ElementRef]) -> Option<T>> {
-    str_getter(offset_for_field, field)
-        .map(|getter| move |tds: &[ElementRef]| -> Option<T> { getter(tds)?.parse().ok() })
+trait GetAndParse<'b> {
+    fn get_str(&self, idx: usize) -> Option<&'b str>;
+    fn get_and_parse<T: FromStr>(&self, idx: usize) -> Option<T>;
 }
 
-fn str_getter(
-    offset_for_field: &HashMap<Field, usize>,
-    field: Field,
-) -> Option<impl for<'doc> Fn(&[ElementRef<'doc>]) -> Option<&'doc str>> {
-    let offset = *offset_for_field.get(&field)?;
+impl<'a> GetAndParse<'a> for Vec<ElementRef<'a>> {
+    fn get_str(&self, idx: usize) -> Option<&'a str> {
+        self.get(idx)?.text().next()
+    }
 
-    Some(
-        for<'tds, 'doc> move |tds: &'tds [ElementRef<'doc>]| -> Option<&'doc str> {
-            tds.get(offset)?.text().next()
-        },
-    )
+    fn get_and_parse<T: FromStr>(&self, idx: usize) -> Option<T> {
+        self.get_str(idx)?.parse().ok()
+    }
 }
 
 #[allow(dead_code)]
@@ -101,13 +95,13 @@ fn placements<'doc>(
 ) -> Option<Vec<Placement<'doc>>> {
     use Field::*;
 
-    let place = getter::<NonZeroU16>(offset_for_field, Place)?;
-    let bib = getter::<NonZeroU16>(offset_for_field, Bib)?;
-    let name = str_getter(offset_for_field, Name)?;
-    let city_state = str_getter(offset_for_field, CityState)?;
-    let gender_rank = str_getter(offset_for_field, GenderRank)?;
-    let final_time = getter::<Duration>(offset_for_field, FinalTime)?;
-    let pace = getter::<Duration>(offset_for_field, Pace)?;
+    let place = *offset_for_field.get(&Place)?;
+    let bib = *offset_for_field.get(&Bib)?;
+    let name = *offset_for_field.get(&Name)?;
+    let city_state = *offset_for_field.get(&CityState)?;
+    let gender_rank = *offset_for_field.get(&GenderRank)?;
+    let final_time = *offset_for_field.get(&FinalTime)?;
+    let pace = *offset_for_field.get(&Pace)?;
 
     let td = Selector::parse("td").unwrap();
     let candidates: Vec<_> = table
@@ -115,13 +109,13 @@ fn placements<'doc>(
         .filter_map(|elem| {
             let tds: Vec<_> = elem.select(&td).collect();
             Some(Placement {
-                place: place(&tds)?,
-                bib: bib(&tds)?,
-                name: name(&tds)?,
-                city_state: city_state(&tds),
-                gender_rank: gender_rank(&tds)?,
-                final_time: final_time(&tds)?,
-                pace: pace(&tds)?,
+                place: tds.get_and_parse(place)?,
+                bib: tds.get_and_parse(bib)?,
+                name: tds.get_str(name)?,
+                city_state: tds.get_str(city_state),
+                gender_rank: tds.get_str(gender_rank)?,
+                final_time: tds.get_and_parse(final_time)?,
+                pace: tds.get_and_parse(pace)?,
             })
         })
         .collect();
