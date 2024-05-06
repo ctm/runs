@@ -1,24 +1,10 @@
 use {
+    super::helpers::scraper::{fields_for_indexes, GetAndParse},
     crate::prelude::*,
     digital_duration_nom::duration::Duration,
     scraper::{ElementRef, Html, Selector},
-    std::{collections::HashMap, fmt::Debug, num::NonZeroU16, str::FromStr},
+    std::{collections::HashMap, fmt::Debug, hash::Hash, num::NonZeroU16, str::FromStr},
 };
-
-// FWIW, considering we only use the 3-tuple of name, final time and
-// male-or-female, I went out of my way to gather a few other fields and to
-// keep them as &str rather than converting them to strings.  The gathering
-// of the other fields is just because we might want to use them in some other
-// project, so we may as well get the easy ones.
-//
-// I jumped through the lifetime hoops just to see if I could (i.e. to
-// test myself and get practice doing it). When I started this project
-// I didn't understand lifetimes as well as I do now. I still get
-// spanked by the compiler quite a bit and I even used
-// feature(closure_lifetime_binder) from nightly, for a while, but I
-// was pretty tired while I worked on this projet (and often
-// distracted by a toothache, whic is why I was tired).  So, I think
-// it was a good use of my time.
 
 // They don't explicitly list the gender, but at least for the El Paso
 // Marathon in 2024, there are only two counts, 70 and 228.  So the
@@ -37,12 +23,10 @@ pub(crate) enum Field {
     Pace,
 }
 
-const N_FIELDS: usize = 7;
+impl FromStr for Field {
+    type Err = String;
 
-impl TryFrom<&str> for Field {
-    type Error = String;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         use Field::*;
 
         match value {
@@ -55,21 +39,6 @@ impl TryFrom<&str> for Field {
             "Pace" => Ok(Pace),
             field => Err(format!("unknown field: {field}")),
         }
-    }
-}
-
-trait GetAndParse<'b> {
-    fn get_str(&self, idx: usize) -> Option<&'b str>;
-    fn get_and_parse<T: FromStr>(&self, idx: usize) -> Option<T>;
-}
-
-impl<'a> GetAndParse<'a> for Vec<ElementRef<'a>> {
-    fn get_str(&self, idx: usize) -> Option<&'a str> {
-        self.get(idx)?.text().next()
-    }
-
-    fn get_and_parse<T: FromStr>(&self, idx: usize) -> Option<T> {
-        self.get_str(idx)?.parse().ok()
     }
 }
 
@@ -131,10 +100,7 @@ impl<'doc> Placement<'doc> {
         document
             .select(&Selector::parse("table.MainTable").unwrap())
             .next()
-            .and_then(|table| {
-                fields_for_indexes(table)
-                    .and_then(|fields_for_indexes| placements(table, &fields_for_indexes))
-            })
+            .and_then(|table| placements(table, &fields_for_indexes(table)))
     }
 
     fn morf(&self, male: &str, female: &str) -> Option<MaleOrFemale> {
@@ -186,18 +152,4 @@ fn male_and_female_counts<'doc>(placements: &[Placement<'doc>]) -> Option<(&'doc
     } else {
         (second, first)
     })
-}
-
-fn fields_for_indexes(table: ElementRef) -> Option<HashMap<Field, usize>> {
-    let result = HashMap::from_iter(
-        table
-            .select(&Selector::parse("thead th").unwrap())
-            .enumerate()
-            .filter_map(|(index, elem)| {
-                elem.text()
-                    .next()
-                    .and_then(|t| t.try_into().ok().map(|f| (f, index)))
-            }),
-    );
-    (result.len() == N_FIELDS).then_some(result)
 }

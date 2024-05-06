@@ -7,7 +7,8 @@ mod parser;
 use {
     crate::parser::{
         ancient_ultra_signup, athlinks, ccr_timing, chrono_track, csv, its_your_race, race_roster,
-        run_fit, runsignup, runsignup_mhtml, taos, ultra_signup, ultra_signup_mhtml, web_scorer,
+        run_fit, runsignup, runsignup_20240506_mhtml, runsignup_mhtml, taos, ultra_signup,
+        ultra_signup_mhtml, web_scorer,
     },
     anyhow::{bail, Error, Result},
     clap::Parser,
@@ -220,11 +221,12 @@ fn summarize_files(entries: impl Iterator<Item = io::Result<DirEntry>>) -> Resul
     Ok(())
 }
 
-static PARSERS: [fn(&str) -> OptionalResults; 15] = [
+static PARSERS: [fn(&str) -> OptionalResults; 16] = [
     ultra_signup::StatusesWithPlacements::names_and_times,
     ccr_timing::Placement::soloist_names_and_times,
     web_scorer::Placement::names_and_times,
     run_fit::Placement::names_and_times,
+    runsignup_20240506_mhtml::Placement::names_and_times,
     runsignup::Placement::names_and_times,
     athlinks::Placement::names_and_times,
     chrono_track::Placement::names_and_times,
@@ -454,6 +456,21 @@ impl Display for MaleOrFemale {
                 MaleOrFemale::NonBinary => "X",
             }
         )
+    }
+}
+
+impl FromStr for MaleOrFemale {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        use MaleOrFemale::*;
+
+        match value {
+            "M" => Ok(Male),
+            "F" => Ok(Female),
+            "X" => Ok(NonBinary),
+            other => Err(format!("Unkown sex: {other}")),
+        }
     }
 }
 
