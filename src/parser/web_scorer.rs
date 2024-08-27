@@ -13,6 +13,7 @@ use {
     std::{fmt, str::FromStr},
 };
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Placement<'a> {
     pub place: u16,

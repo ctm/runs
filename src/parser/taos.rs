@@ -13,6 +13,7 @@ use {
     },
 };
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Placement<'a> {
     pub rank: NonZeroU16,

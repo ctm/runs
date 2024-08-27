@@ -38,6 +38,7 @@ struct PlacementJson {
     time: String,        // "16405000" (that's the time in milliseconds as a string)
 }
 
+#[allow(dead_code)]
 pub struct Placement {
     pub age: u8,             // 30
     pub age_rank: u16,       // 0
