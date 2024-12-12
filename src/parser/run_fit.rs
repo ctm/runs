@@ -35,7 +35,7 @@ pub struct Placement<'a> {
     pub pace: Option<&'a str>,
 }
 
-impl<'a> Placement<'a> {
+impl Placement<'_> {
     #[allow(dead_code)]
     pub fn body_from(uri: &str) -> Option<String> {
         if uri.contains("://irunfit.org/results/") {
@@ -71,7 +71,7 @@ impl<'a> Placement<'a> {
     }
 }
 
-impl<'a> Display for Placement<'a> {
+impl Display for Placement<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(
             f,

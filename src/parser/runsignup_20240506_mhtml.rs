@@ -107,7 +107,7 @@ impl<'doc> Placement<'doc> {
         (!candidates.is_empty()).then_some(candidates)
     }
 
-    fn results(document: &'doc Html) -> Option<Vec<Placement>> {
+    fn results(document: &'doc Html) -> Option<Vec<Placement<'doc>>> {
         document
             .select(&Selector::parse("table#resultsTable").unwrap())
             .next()

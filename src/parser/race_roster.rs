@@ -32,7 +32,7 @@ const STATE: &str = "State";
 const CHIP_TIME: &str = "Chip Time";
 const PLACE: &str = "Overall Place";
 
-impl<'a> Placement<'a> {
+impl Placement<'_> {
     pub fn names_and_times(input: &str) -> OptionalResults {
         let document = Html::parse_document(input);
         Self::results(&document).map(|results| {
@@ -92,7 +92,7 @@ struct ColumnMapper<'a> {
     header_to_index: HashMap<&'a str, usize>,
 }
 
-impl<'a> ColumnMapper<'a> {
+impl ColumnMapper<'_> {
     fn from_document(document: &Html) -> Option<ColumnMapper> {
         let thead = Selector::parse("thead tr").unwrap();
         let th_span = Selector::parse("th>div>span").unwrap();
@@ -114,7 +114,7 @@ struct ColumnValues<'doc, 'a> {
     values: Vec<&'doc str>,
 }
 
-impl<'doc, 'a> ColumnValues<'doc, 'a> {
+impl<'doc> ColumnValues<'doc, '_> {
     fn from_element<'d, 'b>(
         mapper: &'b ColumnMapper<'d>,
         td: &Selector,

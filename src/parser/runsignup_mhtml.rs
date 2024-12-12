@@ -26,7 +26,7 @@ pub struct Placement<'a> {
     // ...
 }
 
-impl<'a> Placement<'a> {
+impl Placement<'_> {
     fn results(contents: &str) -> Option<Vec<Placement>> {
         results(contents).ok().map(|(_, results)| results)
     }
@@ -103,13 +103,15 @@ fn time(input: &str) -> IResult<&str, Duration> {
     map_res(inside_td("time"), |digits: &str| digits.parse())(input)
 }
 
-fn inside_td<'a, T: From<&'a str>>(class: &'a str) -> impl FnMut(&'a str) -> IResult<&str, T> + 'a {
+fn inside_td<'a, T: From<&'a str>>(
+    class: &'a str,
+) -> impl FnMut(&'a str) -> IResult<&'a str, T> + 'a {
     inside_tag("td", class)
 }
 
 fn inside_div<'a, T: From<&'a str>>(
     class: &'a str,
-) -> impl FnMut(&'a str) -> IResult<&str, T> + 'a {
+) -> impl FnMut(&'a str) -> IResult<&'a str, T> + 'a {
     inside_tag("div", class)
 }
 
@@ -119,7 +121,7 @@ fn inside_div<'a, T: From<&'a str>>(
 fn inside_tag<'a, T: From<&'a str>>(
     tag: &'a str,
     class: &'a str,
-) -> impl FnMut(&'a str) -> IResult<&str, T> + 'a {
+) -> impl FnMut(&'a str) -> IResult<&'a str, T> + 'a {
     let initial_tag = format!("class=\"{class}\"");
     let closing_tag = format!("</{tag}>");
     move |input| {

@@ -32,7 +32,7 @@ pub struct Placement<'a> {
     pub bib: u16,
 }
 
-impl<'a> Placement<'a> {
+impl Placement<'_> {
     #[allow(dead_code)]
     pub fn body_from(uri: &str) -> Option<String> {
         if uri.starts_with("http://ccrtiming.com/events-results/") {
@@ -53,7 +53,7 @@ impl<'a> Placement<'a> {
     }
 }
 
-impl<'a> fmt::Display for Placement<'a> {
+impl fmt::Display for Placement<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         type Printable<'a> = &'a dyn digital_duration_nom::option_display::OptionDisplay<Duration>;
 
@@ -140,7 +140,7 @@ pub enum Sort {
     ShoeDown,
 }
 
-impl<'a> fmt::Display for Results<'a> {
+impl fmt::Display for Results<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "Soloists")?;
         for soloist in &self.soloists {

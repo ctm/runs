@@ -26,7 +26,7 @@ pub struct Placement<'a> {
     pub finish_time: Duration,
 }
 
-impl<'a> Placement<'a> {
+impl Placement<'_> {
     #[allow(dead_code)]
     pub fn body_from(uri: &str) -> Option<String> {
         if uri.starts_with("https://www.webscorer.com/race?raceid=") {
@@ -56,7 +56,7 @@ impl<'a> Placement<'a> {
     }
 }
 
-impl<'a> fmt::Display for Placement<'a> {
+impl fmt::Display for Placement<'_> {
     // NOTE: we're currently skipping category here
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let gender = match &self.gender {
@@ -132,7 +132,7 @@ fn place(input: &str) -> IResult<&str, u16> {
 }
 
 #[allow(clippy::needless_lifetimes)]
-fn inside_td<'a>(class: &'a str) -> impl FnMut(&'a str) -> IResult<&str, &str> {
+fn inside_td<'a>(class: &'a str) -> impl FnMut(&'a str) -> IResult<&'a str, &'a str> {
     preceded(
         tuple((multispace0, tag("<td class='"), tag(class), tag("'>"))),
         take_until_and_consume("</td>"),
@@ -149,7 +149,7 @@ fn bib(input: &str) -> IResult<&str, Option<Cow<str>>> {
 #[allow(clippy::needless_lifetimes)]
 fn optional_inside_td<'a>(
     class: &'a str,
-) -> impl FnMut(&'a str) -> IResult<&str, Option<Cow<str>>> {
+) -> impl FnMut(&'a str) -> IResult<&'a str, Option<Cow<'a, str>>> {
     map(inside_td(class), |value: &str| {
         let value = value.trim();
 
