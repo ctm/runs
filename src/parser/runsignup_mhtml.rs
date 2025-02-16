@@ -9,8 +9,8 @@ use {
         bytes::complete::tag,
         combinator::{map, map_parser, map_res},
         multi::many1,
-        sequence::{preceded, terminated, tuple},
-        IResult,
+        sequence::{preceded, terminated},
+        IResult, Parser,
     },
 };
 
@@ -50,57 +50,60 @@ impl Gender for Placement<'_> {
 }
 
 fn results(input: &str) -> IResult<&str, Vec<Placement>> {
-    preceded(take_until_and_consume("<tbody>"), many1(placement))(input)
+    preceded(take_until_and_consume("<tbody>"), many1(placement)).parse(input)
 }
 
 fn placement(input: &str) -> IResult<&str, Placement> {
     map(
-        tuple((
+        (
             preceded(tr_line, place),
             name,
             gender,
             terminated(time, take_until_and_consume("</tr>")),
-        )),
+        ),
         |(place, name, gender, time)| Placement {
             place,
             name,
             gender,
             time,
         },
-    )(input)
+    )
+    .parse(input)
 }
 
 fn tr_line(input: &str) -> IResult<&str, (&str, &str)> {
-    tuple((take_until_and_consume("<tr"), take_until_and_consume(">")))(input)
+    (take_until_and_consume("<tr"), take_until_and_consume(">")).parse(input)
 }
 
 fn place(input: &str) -> IResult<&str, Cow<str>> {
-    inside_td("place")(input)
+    inside_td("place").parse(input)
 }
 
 fn name(input: &str) -> IResult<&str, Cow<str>> {
     map(
         map_parser(
             inside_td("participantName"),
-            tuple((
+            (
                 inside_div::<&str>("participantName__name__firstName"),
                 inside_div::<&str>("participantName__name__lastName"),
-            )),
+            ),
         ),
         |(first, last)| format!("{first} {last}").into(),
-    )(input)
+    )
+    .parse(input)
 }
 
 fn gender(input: &str) -> IResult<&str, Cow<str>> {
     preceded(
         tag("<td>"),
         map(take_until_and_consume("</td>"), |s: &str| s.into()),
-    )(input)
+    )
+    .parse(input)
 }
 
 fn time(input: &str) -> IResult<&str, Duration> {
-    // map_res(inside_td("time"), |digits: &str| digits.parse())(input)
-    map_res(inside_td("time"), |digits: &str| digits.parse())(input)
+    // map_res(inside_td("time"), |digits: &str| digits.parse()).parse(input)
+    map_res(inside_td("time"), |digits: &str| digits.parse()).parse(input)
 }
 
 fn inside_td<'a, T: From<&'a str>>(
@@ -126,11 +129,12 @@ fn inside_tag<'a, T: From<&'a str>>(
     let closing_tag = format!("</{tag}>");
     move |input| {
         preceded(
-            tuple((
+            (
                 take_until_and_consume(&initial_tag[..]),
                 take_until_and_consume(">"),
-            )),
+            ),
             map(take_until_and_consume(&closing_tag[..]), |s: &str| s.into()),
-        )(input)
+        )
+        .parse(input)
     }
 }

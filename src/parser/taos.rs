@@ -4,8 +4,8 @@ use {
     nom::{
         combinator::{map, map_res},
         multi::many1,
-        sequence::{preceded, tuple},
-        IResult,
+        sequence::preceded,
+        IResult, Parser,
     },
     std::{
         num::{NonZeroU16, NonZeroU8},
@@ -95,12 +95,12 @@ impl Gender for Placement<'_> {
 }
 
 fn results(input: &str) -> IResult<&str, Vec<Placement>> {
-    preceded(take_until_and_consume("Age<br>"), many1(placement))(input)
+    preceded(take_until_and_consume("Age<br>"), many1(placement)).parse(input)
 }
 
 fn placement(input: &str) -> IResult<&str, Placement> {
     map(
-        tuple((
+        (
             parsed_tab,   // rank
             unparsed_tab, // bib
             parsed_tab,   // time
@@ -114,13 +114,14 @@ fn placement(input: &str) -> IResult<&str, Placement> {
                 take_until_and_consume("<br>"), // age
                 |s: &str| s.parse(),
             ),
-        )),
+        ),
         Placement::new,
-    )(input)
+    )
+    .parse(input)
 }
 
 fn parsed_tab<T: FromStr>(input: &str) -> IResult<&str, T> {
-    map_res(unparsed_tab, |s| s.parse())(input)
+    map_res(unparsed_tab, |s| s.parse()).parse(input)
 }
 
 fn unparsed_tab(input: &str) -> IResult<&str, Cow<str>> {
@@ -135,5 +136,6 @@ fn unparsed_tab(input: &str) -> IResult<&str, Cow<str>> {
         } else {
             From::from(s)
         }
-    })(input)
+    })
+    .parse(input)
 }

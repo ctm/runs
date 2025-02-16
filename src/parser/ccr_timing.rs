@@ -7,8 +7,8 @@ use {
         character::complete::multispace0,
         combinator::{cond, flat_map, map, map_parser, map_res, not, opt, peek, value},
         multi::{many0, many_m_n},
-        sequence::{preceded, terminated, tuple},
-        IResult,
+        sequence::{preceded, terminated},
+        IResult, Parser,
     },
     std::{cmp::Ordering, fmt},
 };
@@ -164,14 +164,14 @@ pub fn results(input: &str) -> IResult<&str, Results> {
     alt((
         map(
             // 2013 - 2019
-            tuple((
+            (
                 discard_through("Solo Age Groups"),
                 all_category_blocks(21),
                 discard_through("Pairs Age Groups"),
                 all_category_blocks(21),
                 discard_through(" Age Groups"), // "Teams" from 2014 on, "Team" in 2013
                 all_category_blocks(21),
-            )),
+            ),
             |(_, soloists, _, pairs, _, teams)| Results {
                 soloists,
                 pairs,
@@ -180,11 +180,11 @@ pub fn results(input: &str) -> IResult<&str, Results> {
         ),
         map(
             // 2011, 2012
-            tuple((
+            (
                 take_until_and_consume("TOP OVERALL"),
                 discard_through("Male Age Groups"),
                 all_category_blocks(21),
-            )),
+            ),
             |(_, _, soloists)| {
                 Results {
                     soloists,
@@ -195,11 +195,11 @@ pub fn results(input: &str) -> IResult<&str, Results> {
         ),
         map(
             // 2010
-            tuple((
+            (
                 take_until_and_consume("OVERALL RESULTS - FEMALE SOLO"), // 2010
                 discard_through("AGE GROUP RESULTS - MALE SOLOS"),
                 all_category_blocks(26),
-            )),
+            ),
             |(_, _, soloists)| {
                 Results {
                     soloists,
@@ -208,7 +208,8 @@ pub fn results(input: &str) -> IResult<&str, Results> {
                 }
             },
         ),
-    ))(input)
+    ))
+    .parse(input)
 }
 
 fn all_category_blocks(name_len: usize) -> impl FnMut(&str) -> IResult<&str, Vec<Placement>> {
@@ -216,7 +217,8 @@ fn all_category_blocks(name_len: usize) -> impl FnMut(&str) -> IResult<&str, Vec
         map(
             many0(preceded(many0(junk_line), category_block(name_len))),
             |blocks| blocks.into_iter().flatten().collect(),
-        )(input)
+        )
+        .parse(input)
     }
 }
 
@@ -224,7 +226,8 @@ fn junk_line(input: &str) -> IResult<&str, &str> {
     preceded(
         not(alt((category_or_division_line, arrow_line))),
         take_until_and_consume("\n"),
-    )(input)
+    )
+    .parse(input)
 }
 
 //  To make arrow_line the same type as category_or_division_line, we
@@ -232,21 +235,22 @@ fn junk_line(input: &str) -> IResult<&str, &str> {
 //  fail or succeed we don't care about the successful return value,
 //  so we return None.
 fn arrow_line(input: &str) -> IResult<&str, Option<&str>> {
-    map(tag("<h3><a name=\""), |_| None)(input)
+    map(tag("<h3><a name=\""), |_| None).parse(input)
 }
 
 fn discard_through(name: &str) -> impl FnMut(&str) -> IResult<&str, ()> + '_ {
     move |input| {
         value(
             (),
-            tuple((
+            (
                 preceded(
                     take_until_and_consume("><a name=\""),
                     take_until_and_consume(name),
                 ),
                 take_until_and_consume("\n"),
-            )),
-        )(input)
+            ),
+        )
+        .parse(input)
     }
 }
 
@@ -255,31 +259,34 @@ fn category_block(name_len: usize) -> impl FnMut(&str) -> IResult<&str, Vec<Plac
         flat_map(
             terminated(category_or_division_line, many_m_n(2, 2, junk_line)),
             |category| many0(placement(category, name_len)),
-        )(input)
+        )
+        .parse(input)
     }
 }
 
 fn category_or_division_line(input: &str) -> IResult<&str, Option<&str>> {
     preceded(
-        opt(tuple((tag("<pre>"), many0(junk_line)))),
+        opt((tag("<pre>"), many0(junk_line))),
         alt((category_line, division_line)),
-    )(input)
+    )
+    .parse(input)
 }
 
 fn category_line(input: &str) -> IResult<&str, Option<&str>> {
     map(
         preceded(
-            opt(tuple((
+            opt((
                 opt(alt((tag("  <!--mstheme--></font><pre><b>"), tag("<b>")))),
                 tag("CATEGORY: "),
-            ))),
+            )),
             preceded(
                 peek(alt((tag("MALE "), tag("FEMALE ")))),
                 take_until_and_consume("\n"),
             ),
         ),
         Some,
-    )(input)
+    )
+    .parse(input)
 }
 
 // If we have a division line, then the category will actually
@@ -287,63 +294,38 @@ fn category_line(input: &str) -> IResult<&str, Option<&str>> {
 // format.  So, we return None to show that no *category* was
 // found.  We throw away the division, because it's not useful.
 fn division_line(input: &str) -> IResult<&str, Option<&str>> {
-    value(
-        None,
-        tuple((tag("DIVISION: "), take_until_and_consume("\n"))),
-    )(input)
+    value(None, (tag("DIVISION: "), take_until_and_consume("\n"))).parse(input)
 }
 
 fn placement<'a>(
     header_category: Option<&'a str>,
     name_len: usize,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Placement<'a>> + 'a {
-    map(
-        tuple((
-            opt(tag("</b>")),
-            terminated(right_justified_five_digit_number, tag(" ")),
-            terminated(name(header_category, name_len), tag(" ")),
-            terminated(optional_duration, tag(" ")),
-            terminated(optional_duration, tag(" ")),
-            terminated(optional_duration, tag(" ")),
-            terminated(optional_duration, tag("  ")),
-            terminated(optional_duration, tag(" ")),
-            terminated(optional_duration, tag(" ")),
-            terminated(optional_duration, tag(" ")),
-            terminated(optional_duration, tag(" ")),
-            terminated(optional_duration, tag("  ")),
-            terminated(optional_duration, tag(" ")),
-            terminated(non_blank_duration, tag(" ")),
-            terminated(right_justified_five_digit_number, tag(" ")),
-            terminated(
-                cond(header_category.is_none(), upto_fourteen_characters),
-                tuple((opt(tag("</pre>")), crlf)),
+    move |input| {
+        map(
+            (
+                opt(tag("</b>")),
+                terminated(right_justified_five_digit_number, tag(" ")),
+                terminated(name(header_category, name_len), tag(" ")),
+                terminated(optional_duration, tag(" ")),
+                terminated(optional_duration, tag(" ")),
+                terminated(optional_duration, tag(" ")),
+                terminated(optional_duration, tag("  ")),
+                terminated(optional_duration, tag(" ")),
+                terminated(optional_duration, tag(" ")),
+                terminated(optional_duration, tag(" ")),
+                terminated(optional_duration, tag(" ")),
+                terminated(optional_duration, tag("  ")),
+                terminated(optional_duration, tag(" ")),
+                terminated(non_blank_duration, tag(" ")),
+                terminated(right_justified_five_digit_number, tag(" ")),
+                terminated(
+                    cond(header_category.is_none(), upto_fourteen_characters),
+                    (opt(tag("</pre>")), crlf),
+                ),
             ),
-        )),
-        move |(
-            _,
-            category_place,
-            name,
-            bike_up,
-            run_up,
-            ski_up,
-            shoe_up,
-            total_up,
-            shoe_down,
-            ski_down,
-            run_down,
-            bike_down,
-            total_down,
-            total,
-            bib,
-            category_column,
-        )| {
-            let total = total.unwrap();
-            let category = match header_category {
-                Some(value) => value,
-                _ => category_column.expect("no category anywhere"),
-            };
-            Placement {
-                category,
+            move |(
+                _,
                 category_place,
                 name,
                 bike_up,
@@ -358,21 +340,46 @@ fn placement<'a>(
                 total_down,
                 total,
                 bib,
-            }
-        },
-    )
+                category_column,
+            )| {
+                let total = total.unwrap();
+                let category = match header_category {
+                    Some(value) => value,
+                    _ => category_column.expect("no category anywhere"),
+                };
+                Placement {
+                    category,
+                    category_place,
+                    name,
+                    bike_up,
+                    run_up,
+                    ski_up,
+                    shoe_up,
+                    total_up,
+                    shoe_down,
+                    ski_down,
+                    run_down,
+                    bike_down,
+                    total_down,
+                    total,
+                    bib,
+                }
+            },
+        )
+        .parse(input)
+    }
 }
 
 fn crlf(input: &str) -> IResult<&str, (Option<&str>, &str)> {
-    tuple((opt(tag("\r")), tag("\n")))(input)
+    (opt(tag("\r")), tag("\n")).parse(input)
 }
 
 fn right_justified_five_digit_number(input: &str) -> IResult<&str, u16> {
-    map_res(take(5usize), |digits: &str| digits.trim_start().parse())(input)
+    map_res(take(5usize), |digits: &str| digits.trim_start().parse()).parse(input)
 }
 
 fn upto_fourteen_characters(input: &str) -> IResult<&str, &str> {
-    map(take(14usize), |letters: &str| letters.trim_end())(input)
+    map(take(14usize), |letters: &str| letters.trim_end()).parse(input)
 }
 
 fn name(category: Option<&str>, name_len: usize) -> impl FnMut(&str) -> IResult<&str, &str> + '_ {
@@ -381,24 +388,24 @@ fn name(category: Option<&str>, name_len: usize) -> impl FnMut(&str) -> IResult<
             None => 25,
             _ => name_len,
         };
-        map(take(n), |letters: &str| letters.trim())(input)
+        map(take(n), |letters: &str| letters.trim()).parse(input)
     }
 }
 
 fn optional_duration(input: &str) -> IResult<&str, Option<Duration>> {
-    alt((blank_duration, non_blank_duration))(input)
+    alt((blank_duration, non_blank_duration)).parse(input)
 }
 
 fn blank_duration(input: &str) -> IResult<&str, Option<Duration>> {
-    value(None, tag("       "))(input)
+    value(None, tag("       ")).parse(input)
 }
 
 fn non_blank_duration(input: &str) -> IResult<&str, Option<Duration>> {
-    map_parser(take(7usize), map(optionally_left_padded_duration, Some))(input)
+    map_parser(take(7usize), map(optionally_left_padded_duration, Some)).parse(input)
 }
 
 fn optionally_left_padded_duration(input: &str) -> IResult<&str, Duration> {
-    preceded(multispace0, digital_duration_nom::duration::duration_parser)(input)
+    preceded(multispace0, digital_duration_nom::duration::duration_parser).parse(input)
 }
 
 #[cfg(test)]

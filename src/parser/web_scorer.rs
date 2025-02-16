@@ -7,8 +7,8 @@ use {
         character::complete::multispace0,
         combinator::{map, map_parser, map_res, opt, rest, value},
         multi::many1,
-        sequence::{preceded, terminated, tuple},
-        IResult,
+        sequence::{preceded, terminated},
+        IResult, Parser,
     },
     std::{fmt, str::FromStr},
 };
@@ -84,12 +84,13 @@ fn results(input: &str) -> IResult<&str, Vec<Placement>> {
             many1(placement),
         )),
         |v| v.into_iter().flatten().collect::<Vec<_>>(),
-    )(input)
+    )
+    .parse(input)
 }
 
 fn placement(input: &str) -> IResult<&str, Placement> {
     map(
-        tuple((
+        (
             preceded(tr_line, place),
             bib,
             name_and_team,
@@ -97,7 +98,7 @@ fn placement(input: &str) -> IResult<&str, Placement> {
             age,
             gender,
             terminated(finish_time, take_until_and_consume("</tr>")),
-        )),
+        ),
         |(place, bib, name_and_team, category, age, gender, finish_time)| {
             let finish_time = Duration::from_str(finish_time).unwrap();
             let (name, team) = name_and_team;
@@ -112,64 +113,73 @@ fn placement(input: &str) -> IResult<&str, Placement> {
                 finish_time,
             }
         },
-    )(input)
+    )
+    .parse(input)
 }
 
 fn tr_line(input: &str) -> IResult<&str, ()> {
     value(
         (),
-        tuple((
+        (
             multispace0,
             tag("<tr class=\""),
             take_until_and_consume("\""),
             tag(">\r\n"),
-        )),
-    )(input)
+        ),
+    )
+    .parse(input)
 }
 
 fn place(input: &str) -> IResult<&str, u16> {
-    map_res(inside_td("r-place"), |digits: &str| digits.parse())(input)
+    map_res(inside_td("r-place"), |digits: &str| digits.parse()).parse(input)
 }
 
 #[allow(clippy::needless_lifetimes)]
 fn inside_td<'a>(class: &'a str) -> impl FnMut(&'a str) -> IResult<&'a str, &'a str> {
-    preceded(
-        tuple((multispace0, tag("<td class='"), tag(class), tag("'>"))),
-        take_until_and_consume("</td>"),
-    )
+    move |input| {
+        preceded(
+            (multispace0, tag("<td class='"), tag(class), tag("'>")),
+            take_until_and_consume("</td>"),
+        )
+        .parse(input)
+    }
 }
 
 fn bib(input: &str) -> IResult<&str, Option<Cow<str>>> {
     map(optional_inside_td("r-bibnumber"), |bib| match bib {
         Some(ref string) if string == "<span class=\'no-diff-hyphen\'>-</span>" => None,
         _ => bib,
-    })(input)
+    })
+    .parse(input)
 }
 
 #[allow(clippy::needless_lifetimes)]
 fn optional_inside_td<'a>(
     class: &'a str,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Option<Cow<'a, str>>> {
-    map(inside_td(class), |value: &str| {
-        let value = value.trim();
+    move |input| {
+        map(inside_td(class), |value: &str| {
+            let value = value.trim();
 
-        match value {
-            "" => None,
-            _ => Some(html_decoded(value)),
-        }
-    })
+            match value {
+                "" => None,
+                _ => Some(html_decoded(value)),
+            }
+        })
+        .parse(input)
+    }
 }
 
 fn name_and_team(input: &str) -> IResult<&str, (Cow<str>, Option<Cow<str>>)> {
-    map_parser(inside_td("r-racername"), inner_name_and_team)(input)
+    map_parser(inside_td("r-racername"), inner_name_and_team).parse(input)
 }
 
 fn inner_name_and_team(input: &str) -> IResult<&str, (Cow<str>, Option<Cow<str>>)> {
     map(
-        tuple((
+        (
             alt((take_until("<span class=\'team-name\'>"), rest)),
             opt(team),
-        )),
+        ),
         |(name, team)| {
             if let Some(team) = team {
                 if team.trim().is_empty() {
@@ -181,7 +191,8 @@ fn inner_name_and_team(input: &str) -> IResult<&str, (Cow<str>, Option<Cow<str>>
                 (html_decoded(name), team)
             }
         },
-    )(input)
+    )
+    .parse(input)
 }
 
 fn team(input: &str) -> IResult<&str, Cow<str>> {
@@ -191,7 +202,8 @@ fn team(input: &str) -> IResult<&str, Cow<str>> {
             take_until_and_consume("</span>"),
         ),
         html_decoded,
-    )(input)
+    )
+    .parse(input)
 }
 
 fn html_decoded(string: &str) -> Cow<str> {
@@ -204,19 +216,19 @@ fn html_decoded(string: &str) -> Cow<str> {
 }
 
 fn category(input: &str) -> IResult<&str, Option<Cow<str>>> {
-    optional_inside_td("r-category")(input)
+    optional_inside_td("r-category").parse(input)
 }
 
 fn age(input: &str) -> IResult<&str, Option<u8>> {
-    opt(map_res(inside_td("r-age"), |digits: &str| digits.parse()))(input)
+    opt(map_res(inside_td("r-age"), |digits: &str| digits.parse())).parse(input)
 }
 
 fn gender(input: &str) -> IResult<&str, Option<Cow<str>>> {
-    optional_inside_td("r-gender")(input)
+    optional_inside_td("r-gender").parse(input)
 }
 
 fn finish_time(input: &str) -> IResult<&str, &str> {
-    inside_td("r-finish-time")(input)
+    inside_td("r-finish-time").parse(input)
 }
 
 #[cfg(test)]

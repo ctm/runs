@@ -12,8 +12,8 @@ use {
         character::complete::multispace0,
         combinator::{map, map_parser, map_res, opt, peek, value},
         multi::{many0, many1},
-        sequence::{preceded, terminated, tuple},
-        IResult,
+        sequence::{preceded, terminated},
+        IResult, Parser,
     },
     std::{
         fmt::{self, Display, Formatter},
@@ -94,36 +94,38 @@ fn results(input: &str) -> IResult<&str, Vec<Placement>> {
     preceded(
         take_until_and_consume("<table border=0 cellpadding=0 cellspacing=0 class=\"racetable\">"),
         many1(placement),
-    )(input)
+    )
+    .parse(input)
 }
 
 fn tr(input: &str) -> IResult<&str, &str> {
-    preceded(multispace0, tag("<tr>"))(input)
+    preceded(multispace0, tag("<tr>")).parse(input)
 }
 
 fn close_tr(input: &str) -> IResult<&str, &str> {
-    preceded(multispace0, tag("</tr>"))(input)
+    preceded(multispace0, tag("</tr>")).parse(input)
 }
 
 fn td(input: &str) -> IResult<&str, &str> {
     map(
         preceded(
-            tuple((multispace0, tag("<td"), take_until_and_consume(">"))),
+            (multispace0, tag("<td"), take_until_and_consume(">")),
             take_until_and_consume("</td>"),
         ),
         |inner: &str| inner.trim(),
-    )(input)
+    )
+    .parse(input)
 }
 
 fn td_duration(input: &str) -> IResult<&str, Duration> {
-    map_res(td, |digits: &str| digits.parse())(input)
+    map_res(td, |digits: &str| digits.parse()).parse(input)
 }
 
 fn placement(input: &str) -> IResult<&str, Placement> {
     map(
-        tuple((
+        (
             preceded(
-                tuple((many0(heading_tr), tr)),
+                (many0(heading_tr), tr),
                 map_res(td, |digits: &str| digits.parse()), // place
             ),
             td, // name
@@ -148,7 +150,7 @@ fn placement(input: &str) -> IResult<&str, Placement> {
             opt(td),                     // age group place
             chip_and_gun_time,
             terminated(opt(td), close_tr), // pace
-        )),
+        ),
         |(place, name, city, bib, age, gender, age_group_place, (chip_time, gun_time), pace)| {
             Placement {
                 place,
@@ -163,7 +165,8 @@ fn placement(input: &str) -> IResult<&str, Placement> {
                 pace,
             }
         },
-    )(input)
+    )
+    .parse(input)
 }
 
 fn gender(input: &str) -> IResult<&str, MaleOrFemale> {
@@ -171,7 +174,8 @@ fn gender(input: &str) -> IResult<&str, MaleOrFemale> {
         value(MaleOrFemale::Male, tag("M")),
         value(MaleOrFemale::Female, tag("F")),
         value(MaleOrFemale::NonBinary, tag("X")),
-    ))(input)
+    ))
+    .parse(input)
 }
 
 // Returns a chip time and an optional gun time, but first tries to
@@ -189,28 +193,30 @@ fn gender(input: &str) -> IResult<&str, MaleOrFemale> {
 fn chip_and_gun_time(input: &str) -> IResult<&str, (Duration, Option<Duration>)> {
     alt((
         map(
-            tuple((opt(td), td_duration, td_duration)),
+            (opt(td), td_duration, td_duration),
             |(_time_back, chip, gun)| (chip, Some(gun)),
         ),
-        tuple((td_duration, opt(td_duration))),
-    ))(input)
+        (td_duration, opt(td_duration)),
+    ))
+    .parse(input)
 }
 
 // ========================================================================
 
 fn heading_tr(input: &str) -> IResult<&str, ()> {
-    value((), tuple((multispace0, tr, many1(heading_td), close_tr)))(input)
+    value((), (multispace0, tr, many1(heading_td), close_tr)).parse(input)
 }
 
 fn heading_td(input: &str) -> IResult<&str, ()> {
     value(
         (),
-        tuple((
+        (
             multispace0,
             alt((tag("<td class=h"), navigation_open_td)),
             take_until_and_consume("</td>"),
-        )),
-    )(input)
+        ),
+    )
+    .parse(input)
 }
 
 // Ugh! The Ruidoso Marathon has navigation tds that use a class that starts
@@ -220,5 +226,6 @@ fn navigation_open_td(input: &str) -> IResult<&str, &str> {
     preceded(
         tag("<td"),
         peek(map_parser(take_until(">"), take_until("colspan=\""))),
-    )(input)
+    )
+    .parse(input)
 }

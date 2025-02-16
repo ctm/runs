@@ -20,7 +20,7 @@ use nom::{
     bytes::complete::{tag, take_until},
     error::ParseError,
     sequence::terminated,
-    Compare, FindSubstring, IResult, InputLength, InputTake,
+    Compare, FindSubstring, IResult, Input, Parser,
 };
 
 #[allow(dead_code)]
@@ -34,12 +34,12 @@ fn body_from(uri: &str) -> Option<String> {
     }
 }
 
-pub fn take_until_and_consume<T, Input, Error: ParseError<Input>>(
+pub fn take_until_and_consume<T, I, Error: ParseError<I>>(
     tag_to_match: T,
-) -> impl FnMut(Input) -> IResult<Input, Input, Error>
+) -> impl FnMut(I) -> IResult<I, I, Error>
 where
-    Input: InputTake + FindSubstring<T> + Compare<T>,
-    T: InputLength + Copy,
+    I: Input + FindSubstring<T> + Compare<T>,
+    T: Input + Copy,
 {
-    terminated(take_until(tag_to_match), tag(tag_to_match))
+    move |input| terminated(take_until(tag_to_match), tag(tag_to_match)).parse(input)
 }
