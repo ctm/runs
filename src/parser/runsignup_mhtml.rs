@@ -8,6 +8,7 @@ use {
     nom::{
         bytes::complete::tag,
         combinator::{map, map_parser, map_res},
+        error::Error,
         multi::many1,
         sequence::{preceded, terminated},
         IResult, Parser,
@@ -108,13 +109,13 @@ fn time(input: &str) -> IResult<&str, Duration> {
 
 fn inside_td<'a, T: From<&'a str>>(
     class: &'a str,
-) -> impl FnMut(&'a str) -> IResult<&'a str, T> + 'a {
+) -> impl Parser<&'a str, Error = Error<&'a str>, Output = T> + 'a {
     inside_tag("td", class)
 }
 
 fn inside_div<'a, T: From<&'a str>>(
     class: &'a str,
-) -> impl FnMut(&'a str) -> IResult<&'a str, T> + 'a {
+) -> impl Parser<&'a str, Error = Error<&'a str>, Output = T> + 'a {
     inside_tag("div", class)
 }
 
@@ -124,7 +125,7 @@ fn inside_div<'a, T: From<&'a str>>(
 fn inside_tag<'a, T: From<&'a str>>(
     tag: &'a str,
     class: &'a str,
-) -> impl FnMut(&'a str) -> IResult<&'a str, T> + 'a {
+) -> impl Parser<&'a str, Error = Error<&'a str>, Output = T> + 'a {
     let initial_tag = format!("class=\"{class}\"");
     let closing_tag = format!("</{tag}>");
     move |input| {

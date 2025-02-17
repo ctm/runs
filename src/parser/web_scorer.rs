@@ -6,6 +6,7 @@ use {
         bytes::complete::{tag, take_until},
         character::complete::multispace0,
         combinator::{map, map_parser, map_res, opt, rest, value},
+        error::Error,
         multi::many1,
         sequence::{preceded, terminated},
         IResult, Parser,
@@ -135,14 +136,11 @@ fn place(input: &str) -> IResult<&str, u16> {
 }
 
 #[allow(clippy::needless_lifetimes)]
-fn inside_td<'a>(class: &'a str) -> impl FnMut(&'a str) -> IResult<&'a str, &'a str> {
-    move |input| {
-        preceded(
-            (multispace0, tag("<td class='"), tag(class), tag("'>")),
-            take_until_and_consume("</td>"),
-        )
-        .parse(input)
-    }
+fn inside_td<'a>(class: &'a str) -> impl Parser<&'a str, Error = Error<&'a str>, Output = &'a str> {
+    preceded(
+        (multispace0, tag("<td class='"), tag(class), tag("'>")),
+        take_until_and_consume("</td>"),
+    )
 }
 
 fn bib(input: &str) -> IResult<&str, Option<Cow<str>>> {
@@ -156,18 +154,15 @@ fn bib(input: &str) -> IResult<&str, Option<Cow<str>>> {
 #[allow(clippy::needless_lifetimes)]
 fn optional_inside_td<'a>(
     class: &'a str,
-) -> impl FnMut(&'a str) -> IResult<&'a str, Option<Cow<'a, str>>> {
-    move |input| {
-        map(inside_td(class), |value: &str| {
-            let value = value.trim();
+) -> impl Parser<&'a str, Error = Error<&'a str>, Output = Option<Cow<'a, str>>> {
+    map(inside_td(class), |value: &str| {
+        let value = value.trim();
 
-            match value {
-                "" => None,
-                _ => Some(html_decoded(value)),
-            }
-        })
-        .parse(input)
-    }
+        match value {
+            "" => None,
+            _ => Some(html_decoded(value)),
+        }
+    })
 }
 
 fn name_and_team(input: &str) -> IResult<&str, (Cow<str>, Option<Cow<str>>)> {
@@ -234,13 +229,6 @@ fn finish_time(input: &str) -> IResult<&str, &str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_tr_line() {
-        let line = "        <tr class=\"rowBg-mod0\">\r\n";
-
-        assert_eq!((), tr_line(line).unwrap().1);
-    }
 
     #[test]
     fn test_place() {

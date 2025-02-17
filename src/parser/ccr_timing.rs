@@ -6,6 +6,7 @@ use {
         bytes::complete::{tag, take},
         character::complete::multispace0,
         combinator::{cond, flat_map, map, map_parser, map_res, not, opt, peek, value},
+        error::Error,
         multi::{many0, many_m_n},
         sequence::{preceded, terminated},
         IResult, Parser,
@@ -212,14 +213,13 @@ pub fn results(input: &str) -> IResult<&str, Results> {
     .parse(input)
 }
 
-fn all_category_blocks(name_len: usize) -> impl FnMut(&str) -> IResult<&str, Vec<Placement>> {
-    move |input| {
-        map(
-            many0(preceded(many0(junk_line), category_block(name_len))),
-            |blocks| blocks.into_iter().flatten().collect(),
-        )
-        .parse(input)
-    }
+fn all_category_blocks<'a>(
+    name_len: usize,
+) -> impl Parser<&'a str, Error = Error<&'a str>, Output = Vec<Placement<'a>>> {
+    map(
+        many0(preceded(many0(junk_line), category_block(name_len))),
+        |blocks| blocks.into_iter().flatten().collect(),
+    )
 }
 
 fn junk_line(input: &str) -> IResult<&str, &str> {
@@ -238,30 +238,26 @@ fn arrow_line(input: &str) -> IResult<&str, Option<&str>> {
     map(tag("<h3><a name=\""), |_| None).parse(input)
 }
 
-fn discard_through(name: &str) -> impl FnMut(&str) -> IResult<&str, ()> + '_ {
-    move |input| {
-        value(
-            (),
-            (
-                preceded(
-                    take_until_and_consume("><a name=\""),
-                    take_until_and_consume(name),
-                ),
-                take_until_and_consume("\n"),
+fn discard_through(name: &str) -> impl Parser<&str, Error = Error<&str>, Output = ()> + '_ {
+    value(
+        (),
+        (
+            preceded(
+                take_until_and_consume("><a name=\""),
+                take_until_and_consume(name),
             ),
-        )
-        .parse(input)
-    }
+            take_until_and_consume("\n"),
+        ),
+    )
 }
 
-fn category_block(name_len: usize) -> impl FnMut(&str) -> IResult<&str, Vec<Placement>> {
-    move |input| {
-        flat_map(
-            terminated(category_or_division_line, many_m_n(2, 2, junk_line)),
-            |category| many0(placement(category, name_len)),
-        )
-        .parse(input)
-    }
+fn category_block<'a>(
+    name_len: usize,
+) -> impl Parser<&'a str, Error = Error<&'a str>, Output = Vec<Placement<'a>>> {
+    flat_map(
+        terminated(category_or_division_line, many_m_n(2, 2, junk_line)),
+        move |category| many0(placement(category, name_len)),
+    )
 }
 
 fn category_or_division_line(input: &str) -> IResult<&str, Option<&str>> {
@@ -297,35 +293,57 @@ fn division_line(input: &str) -> IResult<&str, Option<&str>> {
     value(None, (tag("DIVISION: "), take_until_and_consume("\n"))).parse(input)
 }
 
-fn placement<'a>(
-    header_category: Option<&'a str>,
+fn placement(
+    header_category: Option<&str>,
     name_len: usize,
-) -> impl FnMut(&'a str) -> IResult<&'a str, Placement<'a>> + 'a {
-    move |input| {
-        map(
-            (
-                opt(tag("</b>")),
-                terminated(right_justified_five_digit_number, tag(" ")),
-                terminated(name(header_category, name_len), tag(" ")),
-                terminated(optional_duration, tag(" ")),
-                terminated(optional_duration, tag(" ")),
-                terminated(optional_duration, tag(" ")),
-                terminated(optional_duration, tag("  ")),
-                terminated(optional_duration, tag(" ")),
-                terminated(optional_duration, tag(" ")),
-                terminated(optional_duration, tag(" ")),
-                terminated(optional_duration, tag(" ")),
-                terminated(optional_duration, tag("  ")),
-                terminated(optional_duration, tag(" ")),
-                terminated(non_blank_duration, tag(" ")),
-                terminated(right_justified_five_digit_number, tag(" ")),
-                terminated(
-                    cond(header_category.is_none(), upto_fourteen_characters),
-                    (opt(tag("</pre>")), crlf),
-                ),
+) -> impl Parser<&str, Error = Error<&str>, Output = Placement> {
+    map(
+        (
+            opt(tag("</b>")),
+            terminated(right_justified_five_digit_number, tag(" ")),
+            terminated(name(header_category, name_len), tag(" ")),
+            terminated(optional_duration, tag(" ")),
+            terminated(optional_duration, tag(" ")),
+            terminated(optional_duration, tag(" ")),
+            terminated(optional_duration, tag("  ")),
+            terminated(optional_duration, tag(" ")),
+            terminated(optional_duration, tag(" ")),
+            terminated(optional_duration, tag(" ")),
+            terminated(optional_duration, tag(" ")),
+            terminated(optional_duration, tag("  ")),
+            terminated(optional_duration, tag(" ")),
+            terminated(non_blank_duration, tag(" ")),
+            terminated(right_justified_five_digit_number, tag(" ")),
+            terminated(
+                cond(header_category.is_none(), upto_fourteen_characters),
+                (opt(tag("</pre>")), crlf),
             ),
-            move |(
-                _,
+        ),
+        move |(
+            _,
+            category_place,
+            name,
+            bike_up,
+            run_up,
+            ski_up,
+            shoe_up,
+            total_up,
+            shoe_down,
+            ski_down,
+            run_down,
+            bike_down,
+            total_down,
+            total,
+            bib,
+            category_column,
+        )| {
+            let total = total.unwrap();
+            let category = match header_category {
+                Some(value) => value,
+                _ => category_column.expect("no category anywhere"),
+            };
+            Placement {
+                category,
                 category_place,
                 name,
                 bike_up,
@@ -340,34 +358,9 @@ fn placement<'a>(
                 total_down,
                 total,
                 bib,
-                category_column,
-            )| {
-                let total = total.unwrap();
-                let category = match header_category {
-                    Some(value) => value,
-                    _ => category_column.expect("no category anywhere"),
-                };
-                Placement {
-                    category,
-                    category_place,
-                    name,
-                    bike_up,
-                    run_up,
-                    ski_up,
-                    shoe_up,
-                    total_up,
-                    shoe_down,
-                    ski_down,
-                    run_down,
-                    bike_down,
-                    total_down,
-                    total,
-                    bib,
-                }
-            },
-        )
-        .parse(input)
-    }
+            }
+        },
+    )
 }
 
 fn crlf(input: &str) -> IResult<&str, (Option<&str>, &str)> {
@@ -382,14 +375,15 @@ fn upto_fourteen_characters(input: &str) -> IResult<&str, &str> {
     map(take(14usize), |letters: &str| letters.trim_end()).parse(input)
 }
 
-fn name(category: Option<&str>, name_len: usize) -> impl FnMut(&str) -> IResult<&str, &str> + '_ {
-    move |input| {
-        let n: usize = match category {
-            None => 25,
-            _ => name_len,
-        };
-        map(take(n), |letters: &str| letters.trim()).parse(input)
-    }
+fn name(
+    category: Option<&str>,
+    name_len: usize,
+) -> impl Parser<&str, Error = Error<&str>, Output = &str> + '_ {
+    let n: usize = match category {
+        None => 25,
+        _ => name_len,
+    };
+    map(take(n), |letters: &str| letters.trim())
 }
 
 fn optional_duration(input: &str) -> IResult<&str, Option<Duration>> {
@@ -429,17 +423,17 @@ mod tests {
 
         let division = "DIVISION: MIXED 30-39\r\n    1 Stranger Things             42:45   54:21   49:38   21:28  2:48:11           47:27   39:04   29:26  1:35:49 4:24:00   417 Team:MF30-39  \r\n    2 Team Drago                1:03:53   53:07   43:02   24:13  3:04:14   12:49   21:07   43:20   46:46  2:04:02 5:08:15   418 Team:MF30-39  \r\n    3 JHM Gym                   1:23:46   52:04   38:26   18:56  3:13:10    8:03   20:41   35:51   52:11  1:56:44 5:09:54   414 Team:MF30-39  \r\n    4 All Swedish No Finish     1:00:22   58:00   39:34   28:02  3:05:57   13:02   18:08   44:21   49:31  2:05:00 5:10:57   413 Team:MF30-39  \r\n    5 SaDaJoCla                 1:07:22   58:04   52:28   29:51  3:27:43   16:55   37:11   41:42   48:39  2:24:26 5:52:09   415 Team:MF30-39  \r\n    6 Three Legged Foxes        1:03:07   58:16   49:23   37:30  3:28:13   18:18   44:36   45:27   50:05  2:38:25 6:06:38   419 Team:MF30-39  \r\n    7 Self Inflicted Fitness    1:18:34 1:10:54   45:32   34:08  3:49:08   15:42                 5:26:12  2:55:39 6:44:46   416 Team:MF30-39  \r\n";
 
-        let placements = category_block(21)(category).unwrap().1;
+        let placements = category_block(21).parse(category).unwrap().1;
         println!("placements = {:?}", placements);
 
-        let placements = category_block(21)(division).unwrap().1;
+        let placements = category_block(21).parse(division).unwrap().1;
         println!("placements = {:?}", placements);
     }
 
     #[test]
     fn test_placement() {
         let line = "    6 Clifford Matthews     5:05:05           47:35   31:21  3:30:01   10:33   30:42   53:50   50:18  2:25:22 5:55:22    99 \r\n";
-        let placement = placement(Some("MALE 50-59"), 21)(line).unwrap().1;
+        let placement = placement(Some("MALE 50-59"), 21).parse(line).unwrap().1;
         // TODO: compare to known good parse
         println!("placement = {:?}", placement);
     }
