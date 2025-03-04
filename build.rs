@@ -37,6 +37,11 @@ fn main() {
         .entry("Jennifer Galasso", "\"Jenny Galasso\"")
         .entry("GEORGE ULLOA", "\"George Ulloa\"")
         .entry("George Ullea", "\"George Ulloa\"")
+        .entry("Joshua Reddish", "\"Josh Reddish\"")
+        .entry("Edward Mazel", "\"Ed Mazel\"")
+        .entry("john larson", "\"John Larson\"")
+        .entry("Chris Vanslooten", "\"Chris VanSlooten\"")
+        .entry("SARAH WILLIS", "\"Sarah Willis\"")
         .build()).unwrap();
 
     writeln!(&mut file, "use crate::ultra_signup_mhtml::Field::{{self,*}};\n#[allow(clippy::unreadable_literal)]\npub(crate) static ARIA_FIELDS: phf::Map<&'static str, Field> = {};",
