@@ -18,7 +18,7 @@ pub(crate) struct Placement {
     last: String,
     city: Option<String>,
     state: Option<String>,
-    age: NonZeroU8,
+    age: Option<NonZeroU8>,
     gender: String,
     gp: u16,
     time: Duration,
@@ -94,7 +94,7 @@ impl Placement {
         }
 
         let place = get_and_parse(&mut values, Place, "place")?;
-        let age = get_and_parse(&mut values, Age, "age")?;
+        let age = get_and_parse(&mut values, Age, "age");
         let gp = get_and_parse(&mut values, Gp, "gender place")?;
         let rank = get_and_parse(&mut values, Rank, "rank")?;
 
