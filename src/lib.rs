@@ -276,7 +276,7 @@ fn summarize_total_times(config: &Config) -> Result<()> {
             // we want to support using urls directly.
             Source::Url(url) => {
                 let url = url.to_string();
-                eprintln!("url: {}", url);
+                eprintln!("url: {url}");
             }
             Source::File(pathbuf) => {
                 let contents = contents(pathbuf)?;
@@ -303,8 +303,7 @@ fn merge(
             Some(durations) => {
                 if let Some(old_duration) = durations[i] {
                     eprintln!(
-                        "Previous time of {} for {}, new time: {}",
-                        old_duration, name, duration
+                        "Previous time of {old_duration} for {name}, new time: {duration}"
                     );
                 }
                 durations[i] = Some(duration)
@@ -487,7 +486,7 @@ pub(crate) trait Morf: Gender {
             "F" | "Female" => Some(Female),
             "X" => Some(NonBinary),
             "U" | "" => None,
-            other => panic!("Unknown gender: {}", other),
+            other => panic!("Unknown gender: {other}"),
         }
     }
 }

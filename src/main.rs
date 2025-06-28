@@ -10,7 +10,7 @@ fn main() {
     std::process::exit(match runs() {
         Ok(_) => 0,
         Err(err) => {
-            eprintln!("{}", err);
+            eprintln!("{err}");
             1
         }
     });

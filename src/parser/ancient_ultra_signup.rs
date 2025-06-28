@@ -119,7 +119,7 @@ impl From<PlacementJson> for Placement {
             DID_NOT_FINISH => DidNotFinish,
             DID_NOT_START => DidNotStart,
             DISQUALIFIED => Disqualified,
-            other => panic!("Unknown status {}", other),
+            other => panic!("Unknown status {other}"),
         };
 
         let milliseconds = u64::from_str(&json.time).unwrap();
@@ -127,7 +127,7 @@ impl From<PlacementJson> for Placement {
         let nanos = (milliseconds % 1000) as u32 * 1_000_000;
         let time = Duration::new(secs, nanos);
 
-        let name = format!("{} {}", first_name, last_name);
+        let name = format!("{first_name} {last_name}");
 
         Self {
             age,

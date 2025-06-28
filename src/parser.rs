@@ -27,10 +27,7 @@ use nom::{
 fn body_from(uri: &str) -> Option<String> {
     match reqwest::blocking::get(uri) {
         Err(_) => None,
-        Ok(response) => match response.text() {
-            Err(_) => None,
-            Ok(body) => Some(body),
-        },
+        Ok(response) => response.text().ok(),
     }
 }
 

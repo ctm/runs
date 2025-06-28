@@ -145,17 +145,17 @@ impl fmt::Display for Results<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "Soloists")?;
         for soloist in &self.soloists {
-            writeln!(f, "{}", soloist)?;
+            writeln!(f, "{soloist}")?;
         }
 
         writeln!(f, "Pairs")?;
         for pair in &self.pairs {
-            writeln!(f, "{}", pair)?;
+            writeln!(f, "{pair}")?;
         }
 
         writeln!(f, "Teams")?;
         for team in &self.teams {
-            writeln!(f, "{}", team)?;
+            writeln!(f, "{team}")?;
         }
         Ok(())
     }
