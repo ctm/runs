@@ -2,14 +2,14 @@ use {
     crate::{parser::take_until_and_consume, prelude::*},
     digital_duration_nom::duration::Duration,
     nom::{
+        IResult, Parser,
         branch::alt,
         bytes::complete::{tag, take},
         character::complete::multispace0,
         combinator::{cond, flat_map, map, map_parser, map_res, not, opt, peek, value},
         error::Error,
-        multi::{many0, many_m_n},
+        multi::{many_m_n, many0},
         sequence::{preceded, terminated},
-        IResult, Parser,
     },
     std::{cmp::Ordering, fmt},
 };

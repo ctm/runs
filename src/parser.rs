@@ -17,10 +17,10 @@ pub mod ultra_signup_mhtml;
 pub mod web_scorer;
 
 use nom::{
+    Compare, FindSubstring, Input, Parser,
     bytes::complete::{tag, take_until},
     error::ParseError,
     sequence::terminated,
-    Compare, FindSubstring, Input, Parser,
 };
 
 #[allow(dead_code)]

@@ -2,6 +2,7 @@ use {
     crate::{parser::take_until_and_consume, prelude::*},
     digital_duration_nom::duration::Duration,
     nom::{
+        IResult, Parser,
         branch::alt,
         bytes::complete::{tag, take_until},
         character::complete::multispace0,
@@ -9,7 +10,6 @@ use {
         error::Error,
         multi::many1,
         sequence::{preceded, terminated},
-        IResult, Parser,
     },
     std::{fmt, str::FromStr},
 };

@@ -2,13 +2,13 @@ use {
     crate::{parser::take_until_and_consume, prelude::*},
     digital_duration_nom::duration::Duration,
     nom::{
+        IResult, Parser,
         combinator::{map, map_res},
         multi::many1,
         sequence::preceded,
-        IResult, Parser,
     },
     std::{
-        num::{NonZeroU16, NonZeroU8},
+        num::{NonZeroU8, NonZeroU16},
         str::FromStr,
     },
 };

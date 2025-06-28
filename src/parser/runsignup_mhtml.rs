@@ -6,12 +6,12 @@ use {
     crate::{parser::take_until_and_consume, prelude::*},
     digital_duration_nom::duration::Duration,
     nom::{
+        IResult, Parser,
         bytes::complete::tag,
         combinator::{map, map_parser, map_res},
         error::Error,
         multi::many1,
         sequence::{preceded, terminated},
-        IResult, Parser,
     },
 };
 

@@ -10,7 +10,7 @@ use {
         run_fit, runsignup, runsignup_20240506_mhtml, runsignup_mhtml, taos, ultra_signup,
         ultra_signup_mhtml, web_scorer,
     },
-    anyhow::{bail, Error, Result},
+    anyhow::{Error, Result, bail},
     clap::Parser,
     digital_duration_nom::duration::Duration,
     itertools::Itertools,

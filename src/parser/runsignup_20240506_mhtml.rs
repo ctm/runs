@@ -1,12 +1,12 @@
 use {
-    super::helpers::scraper::{fields_for_indexes, GetAndParse},
+    super::helpers::scraper::{GetAndParse, fields_for_indexes},
     crate::prelude::*,
     digital_duration_nom::duration::Duration,
     scraper::{ElementRef, Html, Selector},
     std::{
         collections::HashMap,
         fmt::Debug,
-        num::{NonZeroU16, NonZeroU8},
+        num::{NonZeroU8, NonZeroU16},
         str::FromStr,
     },
 };

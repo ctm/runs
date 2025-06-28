@@ -7,17 +7,17 @@ use {
     crate::{parser::take_until_and_consume, prelude::*},
     digital_duration_nom::{duration::Duration, option_display::OptionDisplay},
     nom::{
+        IResult, Parser,
         branch::alt,
         bytes::complete::{tag, take_until},
         character::complete::multispace0,
         combinator::{map, map_parser, map_res, opt, peek, value},
         multi::{many0, many1},
         sequence::{preceded, terminated},
-        IResult, Parser,
     },
     std::{
         fmt::{self, Display, Formatter},
-        num::{NonZeroU16, NonZeroU8},
+        num::{NonZeroU8, NonZeroU16},
     },
 };
 

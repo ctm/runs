@@ -2,7 +2,7 @@ use {
     crate::prelude::*,
     digital_duration_nom::duration::Duration,
     serde::Deserialize,
-    std::num::{NonZeroU16, NonZeroU8},
+    std::num::{NonZeroU8, NonZeroU16},
 };
 
 #[allow(dead_code)]
