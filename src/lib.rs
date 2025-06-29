@@ -74,8 +74,10 @@ fn summarize_directories(entries: impl Iterator<Item = io::Result<DirEntry>>) ->
                 name,
                 scores
                     .iter()
-                    .map(|ScoreInfo { points, .. }| *points)
-                    .sum::<u16>(),
+                    .map(|ScoreInfo { points, count, .. }| (*points, *count))
+                    .reduce(|(total_points, total_count), (points, count)| {
+                        (total_points + points, total_count + count)
+                    }),
                 scores,
             )
         })
@@ -86,7 +88,8 @@ fn summarize_directories(entries: impl Iterator<Item = io::Result<DirEntry>>) ->
     let mut old_points = 0;
     let mut upcoming_rank = 1;
     let mut need_nl = false;
-    for (name, points, events) in scores {
+    for (name, points_and_counts, events) in scores {
+        let (points, count) = points_and_counts.unwrap();
         if need_nl {
             println!();
         } else {
@@ -100,10 +103,15 @@ fn summarize_directories(entries: impl Iterator<Item = io::Result<DirEntry>>) ->
             upcoming_rank
         };
         upcoming_rank += 1;
-        println!("{rank:>rank_width$} {points:>4} {name}");
-        for ScoreInfo { points, path_index } in events {
+        println!("{rank:>rank_width$} {points:>4} {count:>3} {name}");
+        for ScoreInfo {
+            points,
+            path_index,
+            count: _,
+        } in events
+        {
             println!(
-                "{:rank_width$}  {points:>3}   {}",
+                "{:rank_width$}  {points:>3} {count:>3}   {}",
                 "",
                 paths_indexed(&paths, path_index)
             );
@@ -144,6 +152,7 @@ fn score_directories(
 struct ScoreInfo {
     points: u16,
     path_index: u8,
+    count: u8,
 }
 
 fn fold_paths<IN, OUT>(
@@ -184,7 +193,13 @@ fn score_files(
                             }
                             Some(first) => (first * 100 / time) as u16,
                         };
-                        if let Some(ScoreInfo { points, path_index }) = h.get_mut(name.as_ref()) {
+                        if let Some(ScoreInfo {
+                            points,
+                            path_index,
+                            count,
+                        }) = h.get_mut(name.as_ref())
+                        {
+                            *count += 1;
                             if new_points > *points {
                                 *points = new_points;
                                 *path_index = i as u8;
@@ -195,6 +210,7 @@ fn score_files(
                                 ScoreInfo {
                                     points: new_points,
                                     path_index: i as u8,
+                                    count: 1,
                                 },
                             );
                         }
@@ -212,9 +228,17 @@ fn summarize_files(entries: impl Iterator<Item = io::Result<DirEntry>>) -> Resul
 
     scores.sort_by_key(|&(_, ScoreInfo { points, .. })| Reverse(points));
     let width = scores.iter().map(|(name, ..)| name.len()).max().unwrap();
-    for (name, ScoreInfo { points, path_index }) in scores {
+    for (
+        name,
+        ScoreInfo {
+            points,
+            path_index,
+            count,
+        },
+    ) in scores
+    {
         println!(
-            "{points:>3}: {name:width$} {}",
+            "{points:>3}: {count:>3} {name:width$} {}",
             paths_indexed(&paths, path_index)
         );
     }
@@ -302,9 +326,7 @@ fn merge(
         match h.get_mut(name.as_ref()) {
             Some(durations) => {
                 if let Some(old_duration) = durations[i] {
-                    eprintln!(
-                        "Previous time of {old_duration} for {name}, new time: {duration}"
-                    );
+                    eprintln!("Previous time of {old_duration} for {name}, new time: {duration}");
                 }
                 durations[i] = Some(duration)
             }
