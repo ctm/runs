@@ -61,9 +61,10 @@ where
         })
         .and_then(|p| {
             p.parse()
-                .map_err(|e| {
-                    eprintln!("Can't convert {label}: {e:?}, values: {values:?}");
-                    e
+                .inspect_err(|e| {
+                    if label != "age" {
+                        eprintln!("Can't convert {label}: {e:?}, values: {values:?}");
+                    }
                 })
                 .ok()
         })
