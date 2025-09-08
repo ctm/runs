@@ -83,15 +83,13 @@ impl Placement {
 
         let mut values = HashMap::new();
         for td in tds {
-            if let Some(key) = td.value().attr("aria-describedby") {
-                if let Some(key) = key.strip_prefix("list_") {
-                    if let Some(field) = ARIA_FIELDS.get(key) {
+            if let Some(key) = td.value().attr("aria-describedby")
+                && let Some(key) = key.strip_prefix("list_")
+                    && let Some(field) = ARIA_FIELDS.get(key) {
                         let mut value = String::new();
                         value.extend(td.text());
                         values.insert(*field, value);
                     }
-                }
-            }
         }
 
         let place = get_and_parse(&mut values, Place, "place")?;
@@ -166,8 +164,8 @@ impl StatusesWithPlacements {
                     let mut s = String::new();
                     s.extend(tr.text());
                     let pieces = s.split(" - ").collect::<Vec<_>>();
-                    if pieces.len() == 2 {
-                        if let Ok(count) = pieces[1].parse() {
+                    if pieces.len() == 2
+                        && let Ok(count) = pieces[1].parse() {
                             let swc = StatusWithCount {
                                 status: pieces[0].to_string(),
                                 count,
@@ -178,35 +176,29 @@ impl StatusesWithPlacements {
                                     results = Some(vec![(swc, vec![])])
                                 }
                                 Some(results) => {
-                                    if let Some(mut placements) = placements.replace(vec![]) {
-                                        if let Some(current) = results.last_mut() {
+                                    if let Some(mut placements) = placements.replace(vec![])
+                                        && let Some(current) = results.last_mut() {
                                             mem::swap(&mut placements, &mut current.1);
                                             results.push((swc, placements));
                                         }
-                                    }
                                 }
                             }
                         }
-                    }
                 } else if let Some(placements) = placements.as_mut() {
                     let mut tds = tr.select(&td);
-                    if let Some(td) = tds.next() {
-                        if td.value().attr("aria-describedby") == Some("list_results") {
-                            if let Some(placement) = Placement::from_list_result(tds) {
+                    if let Some(td) = tds.next()
+                        && td.value().attr("aria-describedby") == Some("list_results")
+                            && let Some(placement) = Placement::from_list_result(tds) {
                                 placements.push(placement);
                             }
-                        }
-                    }
                 }
             }
         }
-        if let Some(results) = results.as_mut() {
-            if let Some(result) = results.last_mut() {
-                if let Some(placements) = placements {
+        if let Some(results) = results.as_mut()
+            && let Some(result) = results.last_mut()
+                && let Some(placements) = placements {
                     result.1 = placements;
                 }
-            }
-        }
         results.map(Self)
     }
 

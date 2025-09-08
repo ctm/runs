@@ -202,11 +202,10 @@ fn team(input: &str) -> IResult<&str, Cow<str>> {
 }
 
 fn html_decoded(string: &str) -> Cow<str> {
-    if let Ok(decoded_string) = htmlescape::decode_html(string) {
-        if *string != decoded_string {
+    if let Ok(decoded_string) = htmlescape::decode_html(string)
+        && *string != decoded_string {
             return decoded_string.into();
         }
-    }
     string.into()
 }
 

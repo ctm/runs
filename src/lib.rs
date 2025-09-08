@@ -30,13 +30,11 @@ use {
 };
 
 pub fn summarize(config: &Config) -> Result<()> {
-    if config.results.len() == 1 {
-        if let Source::File(p) = &config.results[0] {
-            if p.is_dir() {
+    if config.results.len() == 1
+        && let Source::File(p) = &config.results[0]
+            && p.is_dir() {
                 return summarize_scores(p);
             }
-        }
-    }
     summarize_total_times(config)
 }
 
