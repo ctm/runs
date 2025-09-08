@@ -37,14 +37,14 @@ impl Placement<'_> {
         }
     }
 
-    pub fn results(contents: &str) -> Option<Vec<Placement>> {
+    pub fn results(contents: &str) -> Option<Vec<Placement<'_>>> {
         match results(contents) {
             Ok((_, results)) => Some(results),
             Err(_) => None,
         }
     }
 
-    pub fn names_and_times(input: &str) -> OptionalResults {
+    pub fn names_and_times(input: &str) -> OptionalResults<'_> {
         Self::results(input).map(|results| {
             results
                 .into_iter()
@@ -78,7 +78,7 @@ impl Gender for Placement<'_> {
     }
 }
 
-fn results(input: &str) -> IResult<&str, Vec<Placement>> {
+fn results(input: &str) -> IResult<&str, Vec<Placement<'_>>> {
     map(
         many1(preceded(
             take_until_and_consume("<tbody>"),
@@ -89,7 +89,7 @@ fn results(input: &str) -> IResult<&str, Vec<Placement>> {
     .parse(input)
 }
 
-fn placement(input: &str) -> IResult<&str, Placement> {
+fn placement(input: &str) -> IResult<&str, Placement<'_>> {
     map(
         (
             preceded(tr_line, place),
@@ -143,7 +143,7 @@ fn inside_td<'a>(class: &'a str) -> impl Parser<&'a str, Error = Error<&'a str>,
     )
 }
 
-fn bib(input: &str) -> IResult<&str, Option<Cow<str>>> {
+fn bib(input: &str) -> IResult<&str, Option<Cow<'_, str>>> {
     map(optional_inside_td("r-bibnumber"), |bib| match bib {
         Some(ref string) if string == "<span class=\'no-diff-hyphen\'>-</span>" => None,
         _ => bib,
@@ -165,11 +165,11 @@ fn optional_inside_td<'a>(
     })
 }
 
-fn name_and_team(input: &str) -> IResult<&str, (Cow<str>, Option<Cow<str>>)> {
+fn name_and_team(input: &str) -> IResult<&str, (Cow<'_, str>, Option<Cow<'_, str>>)> {
     map_parser(inside_td("r-racername"), inner_name_and_team).parse(input)
 }
 
-fn inner_name_and_team(input: &str) -> IResult<&str, (Cow<str>, Option<Cow<str>>)> {
+fn inner_name_and_team(input: &str) -> IResult<&str, (Cow<'_, str>, Option<Cow<'_, str>>)> {
     map(
         (
             alt((take_until("<span class=\'team-name\'>"), rest)),
@@ -190,7 +190,7 @@ fn inner_name_and_team(input: &str) -> IResult<&str, (Cow<str>, Option<Cow<str>>
     .parse(input)
 }
 
-fn team(input: &str) -> IResult<&str, Cow<str>> {
+fn team(input: &str) -> IResult<&str, Cow<'_, str>> {
     map(
         preceded(
             tag("<span class='team-name'>"),
@@ -201,15 +201,16 @@ fn team(input: &str) -> IResult<&str, Cow<str>> {
     .parse(input)
 }
 
-fn html_decoded(string: &str) -> Cow<str> {
+fn html_decoded(string: &str) -> Cow<'_, str> {
     if let Ok(decoded_string) = htmlescape::decode_html(string)
-        && *string != decoded_string {
-            return decoded_string.into();
-        }
+        && *string != decoded_string
+    {
+        return decoded_string.into();
+    }
     string.into()
 }
 
-fn category(input: &str) -> IResult<&str, Option<Cow<str>>> {
+fn category(input: &str) -> IResult<&str, Option<Cow<'_, str>>> {
     optional_inside_td("r-category").parse(input)
 }
 
@@ -217,7 +218,7 @@ fn age(input: &str) -> IResult<&str, Option<u8>> {
     opt(map_res(inside_td("r-age"), |digits: &str| digits.parse())).parse(input)
 }
 
-fn gender(input: &str) -> IResult<&str, Option<Cow<str>>> {
+fn gender(input: &str) -> IResult<&str, Option<Cow<'_, str>>> {
     optional_inside_td("r-gender").parse(input)
 }
 

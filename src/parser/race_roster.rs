@@ -33,7 +33,7 @@ const CHIP_TIME: &str = "Chip Time";
 const PLACE: &str = "Overall Place";
 
 impl Placement<'_> {
-    pub fn names_and_times(input: &str) -> OptionalResults {
+    pub fn names_and_times(input: &str) -> OptionalResults<'_> {
         let document = Html::parse_document(input);
         Self::results(&document).map(|results| {
             results
@@ -43,7 +43,7 @@ impl Placement<'_> {
         })
     }
 
-    fn results(document: &Html) -> Option<Vec<Placement>> {
+    fn results(document: &Html) -> Option<Vec<Placement<'_>>> {
         let tbody = Selector::parse("tbody").unwrap();
         let tr = Selector::parse("tr").unwrap();
         let td = Selector::parse("td").unwrap();
@@ -93,7 +93,7 @@ struct ColumnMapper<'a> {
 }
 
 impl ColumnMapper<'_> {
-    fn from_document(document: &Html) -> Option<ColumnMapper> {
+    fn from_document(document: &Html) -> Option<ColumnMapper<'_>> {
         let thead = Selector::parse("thead tr").unwrap();
         let th_span = Selector::parse("th>div>span").unwrap();
         let thead = document.select(&thead).next()?;

@@ -32,9 +32,10 @@ use {
 pub fn summarize(config: &Config) -> Result<()> {
     if config.results.len() == 1
         && let Source::File(p) = &config.results[0]
-            && p.is_dir() {
-                return summarize_scores(p);
-            }
+        && p.is_dir()
+    {
+        return summarize_scores(p);
+    }
     summarize_total_times(config)
 }
 
@@ -118,7 +119,7 @@ fn summarize_directories(entries: impl Iterator<Item = io::Result<DirEntry>>) ->
     Ok(())
 }
 
-fn paths_indexed(paths: &[PathBuf], index: u8) -> Cow<str> {
+fn paths_indexed(paths: &[PathBuf], index: u8) -> Cow<'_, str> {
     paths[index as usize].file_stem().unwrap().to_string_lossy()
 }
 

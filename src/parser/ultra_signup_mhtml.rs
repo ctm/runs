@@ -85,11 +85,12 @@ impl Placement {
         for td in tds {
             if let Some(key) = td.value().attr("aria-describedby")
                 && let Some(key) = key.strip_prefix("list_")
-                    && let Some(field) = ARIA_FIELDS.get(key) {
-                        let mut value = String::new();
-                        value.extend(td.text());
-                        values.insert(*field, value);
-                    }
+                && let Some(field) = ARIA_FIELDS.get(key)
+            {
+                let mut value = String::new();
+                value.extend(td.text());
+                values.insert(*field, value);
+            }
         }
 
         let place = get_and_parse(&mut values, Place, "place")?;
@@ -165,44 +166,48 @@ impl StatusesWithPlacements {
                     s.extend(tr.text());
                     let pieces = s.split(" - ").collect::<Vec<_>>();
                     if pieces.len() == 2
-                        && let Ok(count) = pieces[1].parse() {
-                            let swc = StatusWithCount {
-                                status: pieces[0].to_string(),
-                                count,
-                            };
-                            match results.as_mut() {
-                                None => {
-                                    placements = Some(vec![]);
-                                    results = Some(vec![(swc, vec![])])
-                                }
-                                Some(results) => {
-                                    if let Some(mut placements) = placements.replace(vec![])
-                                        && let Some(current) = results.last_mut() {
-                                            mem::swap(&mut placements, &mut current.1);
-                                            results.push((swc, placements));
-                                        }
+                        && let Ok(count) = pieces[1].parse()
+                    {
+                        let swc = StatusWithCount {
+                            status: pieces[0].to_string(),
+                            count,
+                        };
+                        match results.as_mut() {
+                            None => {
+                                placements = Some(vec![]);
+                                results = Some(vec![(swc, vec![])])
+                            }
+                            Some(results) => {
+                                if let Some(mut placements) = placements.replace(vec![])
+                                    && let Some(current) = results.last_mut()
+                                {
+                                    mem::swap(&mut placements, &mut current.1);
+                                    results.push((swc, placements));
                                 }
                             }
                         }
+                    }
                 } else if let Some(placements) = placements.as_mut() {
                     let mut tds = tr.select(&td);
                     if let Some(td) = tds.next()
                         && td.value().attr("aria-describedby") == Some("list_results")
-                            && let Some(placement) = Placement::from_list_result(tds) {
-                                placements.push(placement);
-                            }
+                        && let Some(placement) = Placement::from_list_result(tds)
+                    {
+                        placements.push(placement);
+                    }
                 }
             }
         }
         if let Some(results) = results.as_mut()
             && let Some(result) = results.last_mut()
-                && let Some(placements) = placements {
-                    result.1 = placements;
-                }
+            && let Some(placements) = placements
+        {
+            result.1 = placements;
+        }
         results.map(Self)
     }
 
-    pub fn names_and_times(input: &str) -> OptionalResults {
+    pub fn names_and_times(input: &str) -> OptionalResults<'_> {
         Self::results(input).and_then(|swp| {
             swp.0
                 .into_iter()

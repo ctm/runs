@@ -35,7 +35,7 @@ impl Placement {
             .ok()
     }
 
-    pub fn names_and_times(input: &str) -> OptionalResults {
+    pub fn names_and_times(input: &str) -> OptionalResults<'_> {
         Self::results(input).map(|results| {
             results
                 .into_iter()

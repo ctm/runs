@@ -113,7 +113,7 @@ impl<'doc> Placement<'doc> {
             .next()
             .and_then(|table| Self::placements(table, &fields_for_indexes(table)))
     }
-    pub fn names_and_times(input: &str) -> OptionalResults {
+    pub fn names_and_times(input: &str) -> OptionalResults<'_> {
         let document = Html::parse_document(input);
         Placement::results(&document).map(|placements| {
             placements

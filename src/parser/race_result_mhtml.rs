@@ -96,7 +96,7 @@ impl<'doc> Placement<'doc> {
         self.gender_rank.split('/').nth(1)
     }
 
-    fn results(document: &Html) -> Option<Vec<Placement>> {
+    fn results(document: &Html) -> Option<Vec<Placement<'_>>> {
         document
             .select(&Selector::parse("table.MainTable").unwrap())
             .next()
@@ -118,7 +118,7 @@ impl<'doc> Placement<'doc> {
     }
 }
 
-pub fn names_and_times(input: &str) -> OptionalResults {
+pub fn names_and_times(input: &str) -> OptionalResults<'_> {
     let document = Html::parse_document(input);
     Placement::results(&document).and_then(|placements| {
         let (male, female) = male_and_female_counts(&placements)?;

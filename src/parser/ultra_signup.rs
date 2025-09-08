@@ -48,7 +48,7 @@ impl StatusesWithPlacements {
         serde_json::from_str(contents).ok()
     }
 
-    pub fn names_and_times(input: &str) -> OptionalResults {
+    pub fn names_and_times(input: &str) -> OptionalResults<'_> {
         Self::results(input).and_then(|swp| {
             swp.0
                 .into_iter()

@@ -28,7 +28,7 @@ impl Placement {
             .map(|v| v.into_iter().flatten().collect())
     }
 
-    pub fn names_and_times(input: &str) -> OptionalResults {
+    pub fn names_and_times(input: &str) -> OptionalResults<'_> {
         Self::results(input).map(|results| {
             results
                 .into_iter()

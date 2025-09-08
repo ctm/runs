@@ -45,14 +45,14 @@ impl Placement<'_> {
         }
     }
 
-    pub fn results(contents: &str) -> Option<Vec<Placement>> {
+    pub fn results(contents: &str) -> Option<Vec<Placement<'_>>> {
         match results(contents) {
             Ok((_, results)) => Some(results),
             Err(_) => None,
         }
     }
 
-    pub fn names_and_times(input: &str) -> OptionalResults {
+    pub fn names_and_times(input: &str) -> OptionalResults<'_> {
         Self::results(input).map(|results| {
             let mut names_and_times: Vec<_> = results
                 .into_iter()
@@ -90,7 +90,7 @@ impl Display for Placement<'_> {
     }
 }
 
-fn results(input: &str) -> IResult<&str, Vec<Placement>> {
+fn results(input: &str) -> IResult<&str, Vec<Placement<'_>>> {
     preceded(
         take_until_and_consume("<table border=0 cellpadding=0 cellspacing=0 class=\"racetable\">"),
         many1(placement),
@@ -121,7 +121,7 @@ fn td_duration(input: &str) -> IResult<&str, Duration> {
     map_res(td, |digits: &str| digits.parse()).parse(input)
 }
 
-fn placement(input: &str) -> IResult<&str, Placement> {
+fn placement(input: &str) -> IResult<&str, Placement<'_>> {
     map(
         (
             preceded(

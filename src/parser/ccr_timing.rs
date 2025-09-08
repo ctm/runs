@@ -43,7 +43,7 @@ impl Placement<'_> {
         }
     }
 
-    pub fn soloist_names_and_times(input: &str) -> OptionalResults {
+    pub fn soloist_names_and_times(input: &str) -> OptionalResults<'_> {
         Results::new(input).map(|results| {
             results
                 .soloists
@@ -161,7 +161,7 @@ impl fmt::Display for Results<'_> {
     }
 }
 
-pub fn results(input: &str) -> IResult<&str, Results> {
+pub fn results(input: &str) -> IResult<&str, Results<'_>> {
     alt((
         map(
             // 2013 - 2019
@@ -296,7 +296,7 @@ fn division_line(input: &str) -> IResult<&str, Option<&str>> {
 fn placement(
     header_category: Option<&str>,
     name_len: usize,
-) -> impl Parser<&str, Error = Error<&str>, Output = Placement> {
+) -> impl Parser<&str, Error = Error<&str>, Output = Placement<'_>> {
     map(
         (
             opt(tag("</b>")),

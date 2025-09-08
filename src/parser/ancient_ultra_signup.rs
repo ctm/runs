@@ -68,7 +68,7 @@ impl Placement {
         }
     }
 
-    pub fn names_and_times(input: &str) -> OptionalResults {
+    pub fn names_and_times(input: &str) -> OptionalResults<'_> {
         use Status::*;
 
         Self::results(input).map(|results| {

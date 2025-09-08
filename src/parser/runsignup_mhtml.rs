@@ -28,11 +28,11 @@ pub struct Placement<'a> {
 }
 
 impl Placement<'_> {
-    fn results(contents: &str) -> Option<Vec<Placement>> {
+    fn results(contents: &str) -> Option<Vec<Placement<'_>>> {
         results(contents).ok().map(|(_, results)| results)
     }
 
-    pub fn names_and_times(input: &str) -> OptionalResults {
+    pub fn names_and_times(input: &str) -> OptionalResults<'_> {
         Self::results(input).map(|results| {
             results
                 .into_iter()
@@ -50,11 +50,11 @@ impl Gender for Placement<'_> {
     }
 }
 
-fn results(input: &str) -> IResult<&str, Vec<Placement>> {
+fn results(input: &str) -> IResult<&str, Vec<Placement<'_>>> {
     preceded(take_until_and_consume("<tbody>"), many1(placement)).parse(input)
 }
 
-fn placement(input: &str) -> IResult<&str, Placement> {
+fn placement(input: &str) -> IResult<&str, Placement<'_>> {
     map(
         (
             preceded(tr_line, place),
@@ -76,11 +76,11 @@ fn tr_line(input: &str) -> IResult<&str, (&str, &str)> {
     (take_until_and_consume("<tr"), take_until_and_consume(">")).parse(input)
 }
 
-fn place(input: &str) -> IResult<&str, Cow<str>> {
+fn place(input: &str) -> IResult<&str, Cow<'_, str>> {
     inside_td("place").parse(input)
 }
 
-fn name(input: &str) -> IResult<&str, Cow<str>> {
+fn name(input: &str) -> IResult<&str, Cow<'_, str>> {
     map(
         map_parser(
             inside_td("participantName"),
@@ -94,7 +94,7 @@ fn name(input: &str) -> IResult<&str, Cow<str>> {
     .parse(input)
 }
 
-fn gender(input: &str) -> IResult<&str, Cow<str>> {
+fn gender(input: &str) -> IResult<&str, Cow<'_, str>> {
     preceded(
         tag("<td>"),
         map(take_until_and_consume("</td>"), |s: &str| s.into()),

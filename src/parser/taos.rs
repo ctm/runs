@@ -58,14 +58,14 @@ impl<'a> Placement<'a> {
         }
     }
 
-    pub fn results(contents: &str) -> Option<Vec<Placement>> {
+    pub fn results(contents: &str) -> Option<Vec<Placement<'_>>> {
         match results(contents) {
             Ok((_, results)) => Some(results),
             Err(_) => None,
         }
     }
 
-    pub fn names_and_times(input: &str) -> OptionalResults {
+    pub fn names_and_times(input: &str) -> OptionalResults<'_> {
         Self::results(input).map(|results| {
             let mut names_and_times: Vec<_> = results
                 .into_iter()
@@ -94,11 +94,11 @@ impl Gender for Placement<'_> {
     }
 }
 
-fn results(input: &str) -> IResult<&str, Vec<Placement>> {
+fn results(input: &str) -> IResult<&str, Vec<Placement<'_>>> {
     preceded(take_until_and_consume("Age<br>"), many1(placement)).parse(input)
 }
 
-fn placement(input: &str) -> IResult<&str, Placement> {
+fn placement(input: &str) -> IResult<&str, Placement<'_>> {
     map(
         (
             parsed_tab,   // rank
@@ -124,7 +124,7 @@ fn parsed_tab<T: FromStr>(input: &str) -> IResult<&str, T> {
     map_res(unparsed_tab, |s| s.parse()).parse(input)
 }
 
-fn unparsed_tab(input: &str) -> IResult<&str, Cow<str>> {
+fn unparsed_tab(input: &str) -> IResult<&str, Cow<'_, str>> {
     map(take_until_and_consume("\t"), |s: &str| {
         if s.contains("&nbsp;") {
             let mut s = s.to_string().replace("&nbsp;", " ");
