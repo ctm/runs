@@ -1,0 +1,20 @@
+The official posting for the V Day Run didn't include an overall page,
+just the separate female and male pages.  As such, I constructed a
+single page overall by starting with the female (the larger of the
+two) page and then pasting all <tr>...</tr> lines from the male page.
+That is enough to give the values to runs, but it does mean that to
+get the correct results, the invocation of runs needs to be something
+like 202*.html (to cause it to ignore the FEMALE, MALE and NOTE
+files):
+
+    [master]% target/release/runs assets/burque_brew/2024-2025/202*.html
+    Ana Romero Jurisson 1:56:55.1 23:53.4 32:19.8 32:05.6 28:36.3
+      Clifford Matthews 1:57:46.4 24:07.0 33:59.0 33:02.7 26:37.7
+         Gregory Gerwin 2:05:14.4 27:34.9 34:05.5 35:06.5 28:27.5
+         Alexandra Kirk 2:14:18.0 28:37.1 36:42.9 37:40.5 31:17.5
+                    VAN 2:21:36.3 28:43.0 42:56.3 38:56.4 31:00.6
+               Dennis M 2:24:50.2 31:01.4 36:55.4 44:28.0 32:25.4
+      Julie Van Buskirk 2:24:50.6 28:36.4 42:49.4 43:07.0 30:17.8
+      James Grundhoffer 2:36:13.6 32:07.4 56:20.1 38:54.1 28:52.0
+                Wendy W 3:04:26.9 38:43.7 51:55.9 52:04.1 41:43.2
+
