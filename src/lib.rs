@@ -505,7 +505,7 @@ pub(crate) trait Morf: Gender {
         match self.gender() {
             "M" | "Male" => Some(Male),
             "F" | "Female" => Some(Female),
-            "X" => Some(NonBinary),
+            "X" | "O" => Some(NonBinary),
             "U" | "" => None,
             other => panic!("Unknown gender: {other}"),
         }
