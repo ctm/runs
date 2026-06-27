@@ -1,0 +1,10 @@
+#! /bin/bash
+
+set -o errexit pipefail
+
+# Developed in collaboration with Gemini (Google AI) to optimize 
+# regex name parsing and direction-based directory filtering.
+
+for file in assets/hrh/*[02468].mhtml; do cargo r -q -- "$file"; done | sed -E 's/^[[:space:]]*([^0-9]+)[[:space:]]+[0-9]+:[0-9]+.*/\1/' | sort -u > clockwise_finishers.txt
+for file in assets/hrh/*[13579].mhtml; do cargo r -q -- "$file"; done | sed -E 's/^[[:space:]]*([^0-9]+)[[:space:]]+[0-9]+:[0-9]+.*/\1/' | sort -u > counterclockwise_finishers.txt
+comm -12 clockwise_finishers.txt counterclockwise_finishers.txt | wc -l
